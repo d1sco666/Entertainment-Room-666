@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { ContinueWatchingItem, CineSrcEpisode, SavedMedia, WatchedItem } from '../types';
+import type { ContinueWatchingItem, CineSrcEpisode, CineSrcTVShow, SavedMedia, WatchedItem } from '../types';
 
 const WATCHLIST_KEY = 'entertainment-room-watchlist';
 const CONTINUE_WATCHING_KEY = 'entertainment-room-continue-watching';
@@ -16,7 +16,11 @@ interface MediaLibraryContextValue {
   removeFromContinueWatching: (type: SavedMedia['type'], id: string) => void;
   isInWatchlist: (type: SavedMedia['type'], id: string) => boolean;
   markWatched: (media: SavedMedia, episode?: WatchedItem['episode']) => void;
-  markSeasonWatched: (media: SavedMedia, seasonNumber: number, episodes: CineSrcEpisode[]) => void;
+  markSeasonWatched: (
+    mediaOrType: SavedMedia | SavedMedia['type'],
+    seasonOrId: number | string,
+    episodesOrSeasonNumber?: CineSrcEpisode[] | number
+  ) => void;
   removeFromWatched: (type: SavedMedia['type'], id: string, episode?: WatchedItem['episode']) => void;
   removeSeasonWatched: (type: SavedMedia['type'], id: string, seasonNumber: number) => void;
   isWatched: (type: SavedMedia['type'], id: string, episode?: WatchedItem['episode']) => boolean;
@@ -171,20 +175,57 @@ export function MediaLibraryProvider({ children }: { children: ReactNode }) {
     setWatched((current) => [entry, ...current.filter((item) => watchedMediaKey(item.type, item.item.id, item.episode) !== key)]);
   }, []);
 
-  const markSeasonWatched = useCallback((media: SavedMedia, seasonNumber: number, episodes: CineSrcEpisode[]) => {
+  const markSeasonWatched = useCallback((
+    mediaOrType: SavedMedia | SavedMedia['type'],
+    seasonOrId: number | string,
+    episodesOrSeasonNumber?: CineSrcEpisode[] | number
+  ) => {
     setWatched((current) => {
-      const entries = episodes.map((episode) => ({
-        ...media,
-        watchedAt: Date.now(),
-        episode: {
-          seasonNumber,
-          episodeNumber: episode.episodeNumber,
-          name: episode.name,
-        },
-      }));
-      const keys = new Set(entries.map((entry) => watchedMediaKey(entry.type, entry.item.id, entry.episode)));
+      if (typeof mediaOrType === 'object') {
+        const media = mediaOrType;
+        const seasonNumber = seasonOrId as number;
+        const episodes = episodesOrSeasonNumber as CineSrcEpisode[];
+        const entries = episodes.map((episode) => ({
+          ...media,
+          watchedAt: Date.now(),
+          episode: {
+            seasonNumber,
+            episodeNumber: episode.episodeNumber,
+            name: episode.name,
+          },
+        }));
+        const keys = new Set(entries.map((entry) => watchedMediaKey(entry.type, entry.item.id, entry.episode)));
+        return [
+          ...current.filter((entry) => !keys.has(watchedMediaKey(entry.type, entry.item.id, entry.episode))),
+          ...entries,
+        ];
+      }
+
+      const type = mediaOrType;
+      const id = seasonOrId as string;
+      const seasonNumber = episodesOrSeasonNumber as number;
+      const showEntry = current.find((item) => item.type === type && item.item.id === id);
+      if (!showEntry) return current;
+
+      const tvShow = showEntry.item as CineSrcTVShow;
+      const totalEpisodes = tvShow.numberOfEpisodes || 0;
+      const episodesPerSeason = Math.ceil(totalEpisodes / Math.max(tvShow.numberOfSeasons || 1, 1));
+      const entries: WatchedItem[] = [];
+
+      for (let episodeNumber = 1; episodeNumber <= episodesPerSeason; episodeNumber++) {
+        entries.push({
+          type: 'tv',
+          item: tvShow,
+          watchedAt: Date.now(),
+          episode: { seasonNumber, episodeNumber, name: `Episode ${episodeNumber}` },
+        });
+      }
+
+      const episodeKeys = new Set(entries.map((entry) => watchedMediaKey(entry.type, entry.item.id, entry.episode)));
       return [
-        ...current.filter((entry) => !keys.has(watchedMediaKey(entry.type, entry.item.id, entry.episode))),
+        ...current.filter((entry) =>
+          !episodeKeys.has(watchedMediaKey(entry.type, entry.item.id, entry.episode))
+        ),
         ...entries,
       ];
     });
