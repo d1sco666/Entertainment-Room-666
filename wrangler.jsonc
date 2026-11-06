@@ -5,9 +5,5 @@
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
-  },
-  "vars": {
-    "ANILIST_CLIENT_ID": "54461",
-    "ANILIST_CLIENT_SECRET": "08FFcZU6oFiVjZ0mu7B3ZqaWi9NwzH6Hwtg9Lsf3"
   }
 }
