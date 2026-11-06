@@ -122,11 +122,107 @@ async function searchOkRu(request: Request) {
   }
 }
 
+function decodePlayerHtml(value: string) {
+  return value
+    .replace(/&quot;/gi, '"')
+    .replace(/&#x27;|&#39;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)));
+}
+
+async function resolveOkRu(request: Request) {
+  const url = new URL(request.url);
+  const embedParam = url.searchParams.get('url')?.trim();
+
+  let embedUrl: URL;
+  try {
+    embedUrl = new URL(embedParam ?? '');
+  } catch {
+    return json({ ok: false, error: 'A valid OK.ru URL is required.' }, 400);
+  }
+
+  const hostname = embedUrl.hostname.toLowerCase();
+  if (
+    embedUrl.protocol !== 'https:' ||
+    !['ok.ru', 'www.ok.ru', 'm.ok.ru'].includes(hostname) ||
+    !/^\/video(?:embed)?\/\d+\/?$/.test(embedUrl.pathname)
+  ) {
+    return json({ ok: false, error: 'Only direct OK.ru video URLs are supported.' }, 400);
+  }
+
+  embedUrl.pathname = embedUrl.pathname.replace('/video/', '/videoembed/');
+  embedUrl.search = '';
+
+  try {
+    const response = await fetch(embedUrl.toString(), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+      cf: { cacheTtl: 300 },
+    } as RequestInit);
+
+    if (!response.ok) {
+      return json({ ok: false, error: 'OK.ru embed is unavailable.' }, 502);
+    }
+
+    const html = await response.text();
+    const optionsMatch = html.match(/data-options=["']([^"']+)["']/i);
+    if (!optionsMatch) {
+      return json({ ok: true, directUrl: null, qualities: [] });
+    }
+
+    const options = JSON.parse(decodePlayerHtml(optionsMatch[1])) as {
+      flashvars?: { metadata?: unknown };
+      metadata?: unknown;
+    };
+    let metadata = options.flashvars?.metadata ?? options.metadata;
+    if (typeof metadata === 'string') {
+      metadata = JSON.parse(decodePlayerHtml(metadata));
+    }
+
+    const videos = (metadata as { videos?: Array<{ name?: string; url?: string }> } | undefined)?.videos ?? [];
+    const qualities = videos
+      .filter((video) => {
+        if (!video.url) return false;
+        try {
+          const streamUrl = new URL(video.url);
+          return streamUrl.protocol === 'https:' &&
+            (streamUrl.hostname === 'okcdn.ru' || streamUrl.hostname.endsWith('.okcdn.ru'));
+        } catch {
+          return false;
+        }
+      })
+      .map((video) => ({
+        name: video.name || 'unknown',
+        url: video.url!,
+      }));
+
+    const qualityOrder = ['full', 'hd', 'sd', 'low', 'lowest', 'mobile'];
+    qualities.sort((a, b) => {
+      return qualityOrder.indexOf(a.name) - qualityOrder.indexOf(b.name);
+    });
+
+    return json({
+      ok: true,
+      directUrl: qualities[0]?.url ?? null,
+      qualities,
+    });
+  } catch {
+    return json({ ok: false, error: 'OK.ru stream metadata could not be read.' }, 502);
+  }
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv) {
     const url = new URL(request.url);
     if (url.pathname === '/api/okru/search') {
       return searchOkRu(request);
+    }
+    if (url.pathname === '/api/okru/resolve') {
+      return resolveOkRu(request);
     }
     return env.ASSETS.fetch(request);
   },

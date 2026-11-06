@@ -55,6 +55,20 @@ function validateMediaIds(tmdbId: number | undefined, season?: number, episode?:
   }
 }
 
+async function resolveOkRuEmbedUrl(embedUrl: string) {
+  const validatedEmbedUrl = validateOkRuEmbedUrl(embedUrl);
+  const resolveUrl = new URL('/api/okru/resolve', window.location.origin);
+  resolveUrl.searchParams.set('url', validatedEmbedUrl);
+
+  const response = await fetch(resolveUrl);
+  if (!response.ok) {
+    return validatedEmbedUrl;
+  }
+
+  const result = await response.json() as { directUrl?: string };
+  return result.directUrl || validatedEmbedUrl;
+}
+
 export function getVidstuckMovieEmbedUrl(tmdbId?: number) {
   validateMediaIds(tmdbId);
   return `https://vidstuck.cc/embed/movie/${tmdbId}`;
@@ -94,7 +108,7 @@ export async function getOkRuMovieEmbedUrl(
   const catalog = await getOkRuCatalog();
   const embedUrl = catalog.movies?.[String(tmdbId)]?.[language];
   if (embedUrl) {
-    return validateOkRuEmbedUrl(embedUrl);
+    return resolveOkRuEmbedUrl(embedUrl);
   }
 
   if (!title) {
@@ -115,7 +129,7 @@ export async function getOkRuMovieEmbedUrl(
   if (!result.embedUrl) {
     throw new Error('No public OK.ru embed was found for this movie.');
   }
-  return validateOkRuEmbedUrl(result.embedUrl);
+  return resolveOkRuEmbedUrl(result.embedUrl);
 }
 
 export async function getOkRuEpisodeEmbedUrl(
@@ -130,7 +144,7 @@ export async function getOkRuEpisodeEmbedUrl(
   const catalog = await getOkRuCatalog();
   const embedUrl = catalog.tv?.[String(tmdbId)]?.[String(season)]?.[String(episode)]?.[language];
   if (embedUrl) {
-    return validateOkRuEmbedUrl(embedUrl);
+    return resolveOkRuEmbedUrl(embedUrl);
   }
 
   if (!title) {
@@ -153,5 +167,5 @@ export async function getOkRuEpisodeEmbedUrl(
   if (!result.embedUrl) {
     throw new Error('No public OK.ru embed was found for this episode.');
   }
-  return validateOkRuEmbedUrl(result.embedUrl);
+  return resolveOkRuEmbedUrl(result.embedUrl);
 }

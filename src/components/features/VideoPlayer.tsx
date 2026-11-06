@@ -4,6 +4,24 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ src, title }: VideoPlayerProps) {
+  const url = new URL(src, window.location.origin);
+  const isOkRuDirectStream =
+    url.protocol === 'https:' &&
+    (url.hostname === 'okcdn.ru' || url.hostname.endsWith('.okcdn.ru'));
+
+  if (isOkRuDirectStream) {
+    return (
+      <video
+        src={src}
+        title={title}
+        controls
+        autoPlay
+        playsInline
+        className="h-full w-full rounded-xl bg-black"
+      />
+    );
+  }
+
   return (
     <iframe
       src={src}
