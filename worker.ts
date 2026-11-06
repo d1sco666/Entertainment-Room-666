@@ -105,6 +105,8 @@ async function searchOkRu(request: Request) {
     searchTerms,
     [query, year].filter(Boolean).join(' '),
     query,
+    normalize(query) === 'resident evil' ? 'Обитель зла' : '',
+    normalize(query) === 'resident evil' ? 'Obitel zla' : '',
     type === 'tv' && season ? `${query} сезон ${season}` : '',
     type === 'tv' && season && episode ? `${query} серия ${episode}` : '',
   ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
@@ -113,31 +115,44 @@ async function searchOkRu(request: Request) {
     const candidates = new Map<string, SearchResult>();
 
     for (const variant of variants) {
-      const response = await fetch(`${OKRU_SEARCH_URL}?${new URLSearchParams({ 'st.query': variant })}`, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0',
-          Accept: 'text/html,application/xhtml+xml',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        cf: { cacheTtl: 3600 },
-      } as RequestInit);
+      for (let page = 1; page <= 3; page++) {
+        const searchParams = new URLSearchParams({ 'st.query': variant, 'st.page': String(page) });
+        const response = await fetch(`${OKRU_SEARCH_URL}?${searchParams}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0',
+            Accept: 'text/html,application/xhtml+xml',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          cf: { cacheTtl: 3600 },
+        } as RequestInit);
 
-      if (!response.ok) continue;
-      const html = await response.text();
-      for (const result of findResults(html, variant)) {
-        candidates.set(result.id, result);
+        if (!response.ok) continue;
+        const html = await response.text();
+        for (const result of findResults(html, variant)) {
+          candidates.set(result.id, result);
+        }
       }
       if (candidates.size >= 20) break;
     }
 
     const candidateList = [...candidates.values()].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     for (const candidate of candidateList.slice(0, 20)) {
-      if (!candidate.title || (candidate.score ?? 0) < 2) continue;
       const resolveUrl = new URL('https://worker.invalid/api/okru/resolve');
       resolveUrl.searchParams.set('url', candidate.embedUrl);
       const resolvedResponse = await resolveOkRu(new Request(resolveUrl.toString()));
-      const resolved = await resolvedResponse.json() as { directUrl?: string; qualities?: unknown[] };
+      const resolved = await resolvedResponse.json() as { directUrl?: string; qualities?: unknown[]; title?: string };
       if (resolved.directUrl) {
+        const normalizedQuery = normalize(query);
+        const normalizedTitle = normalize(resolved.title || candidate.title);
+        const queryWords = normalizedQuery.split(/\s+/).filter((word) => word.length >= 2 && !/^\d{4}$/.test(word));
+        const titleMatches = queryWords.length === 0 ||
+          queryWords.every((word) => normalizedTitle.includes(word)) ||
+          (normalizedQuery === 'resident evil' && (
+            normalizedTitle.includes('обитель зла') ||
+            normalizedTitle.includes('obitel zla') ||
+            normalizedTitle.includes('resident evil')
+          ));
+        if (!titleMatches) continue;
         return json({
           ok: true,
           embedUrl: candidate.embedUrl,
@@ -215,6 +230,12 @@ async function resolveOkRu(request: Request) {
       metadata = JSON.parse(decodePlayerHtml(metadata));
     }
 
+    const metadataObject = metadata as {
+      title?: string;
+      movie?: { title?: string };
+      videos?: Array<{ name?: string; url?: string }>;
+    } | undefined;
+    const embeddedTitle = metadataObject?.movie?.title || metadataObject?.title || '';
     const videos = (metadata as { videos?: Array<{ name?: string; url?: string }> } | undefined)?.videos ?? [];
     const qualities = videos
       .filter((video) => {
@@ -241,6 +262,7 @@ async function resolveOkRu(request: Request) {
       ok: true,
       directUrl: qualities[0]?.url ?? null,
       qualities,
+      title: embeddedTitle,
     });
   } catch {
     return json({ ok: false, error: 'OK.ru stream metadata could not be read.' }, 502);
