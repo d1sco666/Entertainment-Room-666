@@ -273,11 +273,17 @@ export function TVShowPage() {
                       setSelectedSeason(Number(e.target.value));
                       setSelectedEpisode(null);
                     }}
-                    className="px-3 py-1.5 text-sm border border-dark-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-800 text-dark-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="min-w-[9rem] px-3 py-1.5 text-sm font-medium border border-dark-300 dark:border-dark-600 rounded-lg bg-white text-dark-900 [color-scheme:light] dark:bg-dark-800 dark:text-white dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-primary-500"
                     aria-label="Select season"
                   >
                     {Array.from({ length: show.numberOfSeasons }, (_, i) => i + 1).map((seasonNum) => (
-                      <option key={seasonNum} value={seasonNum}>Season {seasonNum}</option>
+                      <option
+                        key={seasonNum}
+                        value={seasonNum}
+                        className="bg-white text-dark-900 dark:bg-dark-800 dark:text-white"
+                      >
+                        Season {seasonNum}
+                      </option>
                     ))}
                   </select>
                 </div>
