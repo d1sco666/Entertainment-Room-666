@@ -41,3 +41,53 @@ export function getZxcstreamEpisodePlayerUrl(
   url.searchParams.set('dubLang', dubLanguage);
   return url.toString();
 }
+
+export function getSuperEmbedMoviePlayerUrl(tmdbId: number | undefined) {
+  validateMediaIds(tmdbId);
+  const url = new URL('https://multiembed.mov/');
+  url.searchParams.set('video_id', String(tmdbId));
+  url.searchParams.set('tmdb', '1');
+  return url.toString();
+}
+
+export function getSuperEmbedEpisodePlayerUrl(
+  tmdbId: number | undefined,
+  season: number,
+  episode: number
+) {
+  validateMediaIds(tmdbId, season, episode);
+  const url = new URL('https://multiembed.mov/');
+  url.searchParams.set('video_id', String(tmdbId));
+  url.searchParams.set('tmdb', '1');
+  url.searchParams.set('s', String(season));
+  url.searchParams.set('e', String(episode));
+  return url.toString();
+}
+
+export function getVideasyMoviePlayerUrl(tmdbId: number | undefined) {
+  validateMediaIds(tmdbId);
+  return `https://player.videasy.to/movie/${encodeURIComponent(String(tmdbId))}`;
+}
+
+export function getVideasyEpisodePlayerUrl(
+  tmdbId: number | undefined,
+  season: number,
+  episode: number
+) {
+  validateMediaIds(tmdbId, season, episode);
+  return `https://player.videasy.to/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
+}
+
+export function getAnyEmbedMoviePlayerUrl(tmdbId: number | undefined) {
+  validateMediaIds(tmdbId);
+  return `https://anyembed.xyz/embed/movie/${encodeURIComponent(String(tmdbId))}`;
+}
+
+export function getAnyEmbedEpisodePlayerUrl(
+  tmdbId: number | undefined,
+  season: number,
+  episode: number
+) {
+  validateMediaIds(tmdbId, season, episode);
+  return `https://anyembed.xyz/embed/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
+}

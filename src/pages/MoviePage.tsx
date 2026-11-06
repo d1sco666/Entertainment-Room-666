@@ -11,6 +11,9 @@ import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatRuntime, formatDate } from '../utils/helpers';
 import { getVimeusMovieEmbedUrl } from '../utils/vimeus';
 import {
+  getAnyEmbedMoviePlayerUrl,
+  getSuperEmbedMoviePlayerUrl,
+  getVideasyMoviePlayerUrl,
   getVidstuckMovieEmbedUrl,
   getZxcstreamMoviePlayerUrl,
 } from '../utils/additionalPlayers';
@@ -89,6 +92,24 @@ export function MoviePage() {
             id: 'zxcstream',
             name: 'Zxcstream',
             getSrc: () => getZxcstreamMoviePlayerUrl(movie.tmdbId, 'en'),
+            unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
+          },
+          {
+            id: 'superembed',
+            name: 'SuperEmbed',
+            getSrc: () => getSuperEmbedMoviePlayerUrl(movie.tmdbId),
+            unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
+          },
+          {
+            id: 'videasy',
+            name: 'Videasy',
+            getSrc: () => getVideasyMoviePlayerUrl(movie.tmdbId),
+            unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
+          },
+          {
+            id: 'anyembed',
+            name: 'AnyEmbed',
+            getSrc: () => getAnyEmbedMoviePlayerUrl(movie.tmdbId),
             unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
           },
         ]}

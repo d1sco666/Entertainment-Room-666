@@ -10,6 +10,9 @@ import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatDate, formatRuntime } from '../utils/helpers';
 import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
 import {
+  getAnyEmbedEpisodePlayerUrl,
+  getSuperEmbedEpisodePlayerUrl,
+  getVideasyEpisodePlayerUrl,
   getVidstuckEpisodeEmbedUrl,
   getZxcstreamEpisodePlayerUrl,
 } from '../utils/additionalPlayers';
@@ -125,6 +128,36 @@ export function TVShowPage() {
                 selectedSeason,
                 selectedEpisode.episodeNumber,
                 'en'
+              ),
+              unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
+            },
+            {
+              id: 'superembed',
+              name: 'SuperEmbed',
+              getSrc: () => getSuperEmbedEpisodePlayerUrl(
+                show.tmdbId,
+                selectedSeason,
+                selectedEpisode.episodeNumber
+              ),
+              unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
+            },
+            {
+              id: 'videasy',
+              name: 'Videasy',
+              getSrc: () => getVideasyEpisodePlayerUrl(
+                show.tmdbId,
+                selectedSeason,
+                selectedEpisode.episodeNumber
+              ),
+              unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
+            },
+            {
+              id: 'anyembed',
+              name: 'AnyEmbed',
+              getSrc: () => getAnyEmbedEpisodePlayerUrl(
+                show.tmdbId,
+                selectedSeason,
+                selectedEpisode.episodeNumber
               ),
               unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
             },
