@@ -10,7 +10,6 @@ import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatDate, formatRuntime } from '../utils/helpers';
 import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
 import {
-  getHnEmbedEpisodePlayerUrl,
   getVidstuckEpisodeEmbedUrl,
   getZxcstreamEpisodePlayerUrl,
 } from '../utils/additionalPlayers';
@@ -126,16 +125,6 @@ export function TVShowPage() {
                 selectedSeason,
                 selectedEpisode.episodeNumber,
                 'en'
-              ),
-              unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
-            },
-            {
-              id: 'hnembed',
-              name: 'HN Embed',
-              getSrc: () => getHnEmbedEpisodePlayerUrl(
-                show.tmdbId,
-                selectedSeason,
-                selectedEpisode.episodeNumber
               ),
               unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
             },

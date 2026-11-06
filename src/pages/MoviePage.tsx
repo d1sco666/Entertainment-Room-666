@@ -11,7 +11,6 @@ import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatRuntime, formatDate } from '../utils/helpers';
 import { getVimeusMovieEmbedUrl } from '../utils/vimeus';
 import {
-  getHnEmbedMoviePlayerUrl,
   getVidstuckMovieEmbedUrl,
   getZxcstreamMoviePlayerUrl,
 } from '../utils/additionalPlayers';
@@ -90,12 +89,6 @@ export function MoviePage() {
             id: 'zxcstream',
             name: 'Zxcstream',
             getSrc: () => getZxcstreamMoviePlayerUrl(movie.tmdbId, 'en'),
-            unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
-          },
-          {
-            id: 'hnembed',
-            name: 'HN Embed',
-            getSrc: () => getHnEmbedMoviePlayerUrl(movie.tmdbId),
             unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
           },
         ]}
