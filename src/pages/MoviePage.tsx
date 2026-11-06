@@ -10,7 +10,7 @@ import { useMediaTrailer, useMovieDetails } from '../hooks/useMedia';
 import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatRuntime, formatDate } from '../utils/helpers';
 import { getVimeusMovieEmbedUrl } from '../utils/vimeus';
-import { getVidstuckMovieEmbedUrl, getZxcstreamMoviePlayerUrl, getOkRuMovieEmbedUrl } from '../utils/additionalPlayers';
+import { getVidstuckMovieEmbedUrl, getZxcstreamMoviePlayerUrl } from '../utils/additionalPlayers';
 
 export function MoviePage() {
   const { id } = useParams<{ id: string }>();
@@ -87,20 +87,6 @@ export function MoviePage() {
             name: 'Zxcstream',
             getSrc: () => getZxcstreamMoviePlayerUrl(movie.tmdbId, 'en'),
             unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
-          },
-          {
-            id: 'okru',
-            name: 'OK.ru',
-            languageOptions: [
-              { value: 'en', label: 'English' },
-              { value: 'es', label: 'Spanish' },
-            ],
-            getSrc: (language) => getOkRuMovieEmbedUrl(
-              movie.tmdbId,
-              language === 'es' ? 'es' : 'en',
-              movie.title,
-              movie.releaseDate ? Number(movie.releaseDate.slice(0, 4)) : undefined
-            ),
           },
         ]}
         onClose={() => setShowPlayer(false)}

@@ -9,7 +9,7 @@ import { useMediaTrailer, useTVShowDetails, useSeasonDetails } from '../hooks/us
 import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatDate, formatRuntime } from '../utils/helpers';
 import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
-import { getVidstuckEpisodeEmbedUrl, getZxcstreamEpisodePlayerUrl, getOkRuEpisodeEmbedUrl } from '../utils/additionalPlayers';
+import { getVidstuckEpisodeEmbedUrl, getZxcstreamEpisodePlayerUrl } from '../utils/additionalPlayers';
 import { useState } from 'react';
 import type { CineSrcEpisode } from '../types';
 
@@ -124,22 +124,6 @@ export function TVShowPage() {
                 'en'
               ),
               unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
-            },
-            {
-              id: 'okru',
-              name: 'OK.ru',
-              languageOptions: [
-                { value: 'en', label: 'English' },
-                { value: 'es', label: 'Spanish' },
-              ],
-              getSrc: (language) => getOkRuEpisodeEmbedUrl(
-                show.tmdbId,
-                selectedSeason,
-                selectedEpisode.episodeNumber,
-                language === 'es' ? 'es' : 'en',
-                show.name,
-                show.firstAirDate ? Number(show.firstAirDate.slice(0, 4)) : undefined
-              ),
             },
           ]}
           onClose={() => setShowPlayer(false)}
