@@ -136,7 +136,9 @@ export function TVShowPage() {
                 show.tmdbId,
                 selectedSeason,
                 selectedEpisode.episodeNumber,
-                language === 'es' ? 'es' : 'en'
+                language === 'es' ? 'es' : 'en',
+                show.name,
+                show.firstAirDate ? Number(show.firstAirDate.slice(0, 4)) : undefined
               ),
             },
           ]}

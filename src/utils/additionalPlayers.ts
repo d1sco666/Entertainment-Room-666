@@ -84,27 +84,74 @@ export function getZxcstreamEpisodePlayerUrl(
   return url.toString();
 }
 
-export async function getOkRuMovieEmbedUrl(tmdbId: number | undefined, language: OkRuLanguage) {
+export async function getOkRuMovieEmbedUrl(
+  tmdbId: number | undefined,
+  language: OkRuLanguage,
+  title?: string,
+  year?: number
+) {
   validateMediaIds(tmdbId);
   const catalog = await getOkRuCatalog();
   const embedUrl = catalog.movies?.[String(tmdbId)]?.[language];
-  if (!embedUrl) {
-    throw new Error(`No authorized OK.ru ${language === 'en' ? 'English' : 'Spanish'} embed is available for this movie.`);
+  if (embedUrl) {
+    return validateOkRuEmbedUrl(embedUrl);
   }
-  return validateOkRuEmbedUrl(embedUrl);
+
+  if (!title) {
+    throw new Error(`No OK.ru embed is available for this movie.`);
+  }
+
+  const searchUrl = new URL('/api/okru/search', window.location.origin);
+  searchUrl.searchParams.set('q', title);
+  searchUrl.searchParams.set('type', 'movie');
+  if (year) searchUrl.searchParams.set('year', String(year));
+
+  const response = await fetch(searchUrl);
+  if (!response.ok) {
+    throw new Error('OK.ru could not find an embeddable result for this movie.');
+  }
+
+  const result = await response.json() as { embedUrl?: string };
+  if (!result.embedUrl) {
+    throw new Error('No public OK.ru embed was found for this movie.');
+  }
+  return validateOkRuEmbedUrl(result.embedUrl);
 }
 
 export async function getOkRuEpisodeEmbedUrl(
   tmdbId: number | undefined,
   season: number,
   episode: number,
-  language: OkRuLanguage
+  language: OkRuLanguage,
+  title?: string,
+  year?: number
 ) {
   validateMediaIds(tmdbId, season, episode);
   const catalog = await getOkRuCatalog();
   const embedUrl = catalog.tv?.[String(tmdbId)]?.[String(season)]?.[String(episode)]?.[language];
-  if (!embedUrl) {
-    throw new Error(`No authorized OK.ru ${language === 'en' ? 'English' : 'Spanish'} embed is available for this episode.`);
+  if (embedUrl) {
+    return validateOkRuEmbedUrl(embedUrl);
   }
-  return validateOkRuEmbedUrl(embedUrl);
+
+  if (!title) {
+    throw new Error(`No OK.ru embed is available for this episode.`);
+  }
+
+  const searchUrl = new URL('/api/okru/search', window.location.origin);
+  searchUrl.searchParams.set('q', title);
+  searchUrl.searchParams.set('type', 'tv');
+  searchUrl.searchParams.set('season', String(season));
+  searchUrl.searchParams.set('episode', String(episode));
+  if (year) searchUrl.searchParams.set('year', String(year));
+
+  const response = await fetch(searchUrl);
+  if (!response.ok) {
+    throw new Error('OK.ru could not find an embeddable result for this episode.');
+  }
+
+  const result = await response.json() as { embedUrl?: string };
+  if (!result.embedUrl) {
+    throw new Error('No public OK.ru embed was found for this episode.');
+  }
+  return validateOkRuEmbedUrl(result.embedUrl);
 }

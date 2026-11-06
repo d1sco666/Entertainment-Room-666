@@ -95,7 +95,12 @@ export function MoviePage() {
               { value: 'en', label: 'English' },
               { value: 'es', label: 'Spanish' },
             ],
-            getSrc: (language) => getOkRuMovieEmbedUrl(movie.tmdbId, language === 'es' ? 'es' : 'en'),
+            getSrc: (language) => getOkRuMovieEmbedUrl(
+              movie.tmdbId,
+              language === 'es' ? 'es' : 'en',
+              movie.title,
+              movie.releaseDate ? Number(movie.releaseDate.slice(0, 4)) : undefined
+            ),
           },
         ]}
         onClose={() => setShowPlayer(false)}
