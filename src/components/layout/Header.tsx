@@ -78,7 +78,7 @@ export function Header() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 }
-                className="bg-dark-100 dark:bg-dark-800 border-dark-200 dark:border-dark-700 focus:bg-white dark:focus:bg-dark-800"
+                className="!bg-white !text-black border-dark-200 focus:bg-white"
               />
             </form>
           </div>
@@ -148,12 +148,12 @@ export function Header() {
                 placeholder="Search movies, TV shows..."
                 value={searchQuery}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                className="!bg-white !text-black border-dark-200 focus:bg-white"
                 leftIcon={
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 }
-                className="bg-dark-100 dark:bg-dark-800 border-dark-200 dark:border-dark-700"
                 autoFocus
               />
             </form>

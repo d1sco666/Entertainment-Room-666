@@ -98,12 +98,12 @@ export function GenreBrowser({ type }: GenreBrowserProps) {
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-300">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-900 dark:text-dark-900">
           Genre
           <select
             value={selectedGenre}
             onChange={(event) => setSelectedGenre(event.target.value)}
-            className="w-full border border-dark-600 bg-dark-800 px-3 py-2.5 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full border border-dark-300 bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 [&>option]:bg-white [&>option]:text-black"
           >
             <option value="">All genres</option>
             {genres.map((genre) => (
@@ -111,35 +111,35 @@ export function GenreBrowser({ type }: GenreBrowserProps) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-300">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-900 dark:text-dark-900">
           Age rating
           <select
             value={ageRating}
             onChange={(event) => setAgeRating(event.target.value)}
-            className="w-full border border-dark-600 bg-dark-800 px-3 py-2.5 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full border border-dark-300 bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 [&>option]:bg-white [&>option]:text-black"
           >
             <option value="">Any age rating</option>
             {ageRatings.map((rating) => <option key={rating} value={rating}>{rating}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-300">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-900 dark:text-dark-900">
           Sort by
           <select
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value === 'top_rated' ? 'top_rated' : 'popular')}
-            className="w-full border border-dark-600 bg-dark-800 px-3 py-2.5 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full border border-dark-300 bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 [&>option]:bg-white [&>option]:text-black"
           >
             <option value="popular">Popular</option>
             <option value="top_rated">Top Rated</option>
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-300">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-900 dark:text-dark-900">
           Streaming provider (US)
           <select
             value={providerId}
             onChange={(event) => setProviderId(event.target.value)}
             disabled={providersLoading || Boolean(providersError)}
-            className="w-full border border-dark-600 bg-dark-800 px-3 py-2.5 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full border border-dark-300 bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 [&>option]:bg-white [&>option]:text-black"
           >
             <option value="">
               {providersLoading ? 'Loading providers…' : providersError ? 'Providers unavailable' : 'Any provider'}
@@ -149,13 +149,13 @@ export function GenreBrowser({ type }: GenreBrowserProps) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-300">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-900 dark:text-dark-900">
           Country of origin
           <select
             value={countryCode}
             onChange={(event) => setCountryCode(event.target.value)}
             disabled={countriesLoading || Boolean(countriesError)}
-            className="w-full border border-dark-600 bg-dark-800 px-3 py-2.5 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full border border-dark-300 bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 [&>option]:bg-white [&>option]:text-black"
           >
             <option value="">
               {countriesLoading ? 'Loading countries…' : countriesError ? 'Countries unavailable' : 'Any country'}
@@ -167,12 +167,12 @@ export function GenreBrowser({ type }: GenreBrowserProps) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-300">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-dark-900 dark:text-dark-900">
           Release year
           <select
             value={year}
             onChange={(event) => setYear(event.target.value)}
-            className="w-full border border-dark-600 bg-dark-800 px-3 py-2.5 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full border border-dark-300 bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-primary-500 [&>option]:bg-white [&>option]:text-black"
           >
             <option value="">Any year</option>
             {Array.from({ length: currentYear - 1899 }, (_, index) => currentYear - index).map((releaseYear) => (

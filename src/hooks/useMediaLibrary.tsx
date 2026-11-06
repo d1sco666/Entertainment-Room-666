@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { ContinueWatchingItem, SavedMedia, WatchedItem } from '../types';
+import type { ContinueWatchingItem, CineSrcEpisode, SavedMedia, WatchedItem } from '../types';
 
 const WATCHLIST_KEY = 'entertainment-room-watchlist';
 const CONTINUE_WATCHING_KEY = 'entertainment-room-continue-watching';
@@ -16,7 +16,9 @@ interface MediaLibraryContextValue {
   removeFromContinueWatching: (type: SavedMedia['type'], id: string) => void;
   isInWatchlist: (type: SavedMedia['type'], id: string) => boolean;
   markWatched: (media: SavedMedia, episode?: WatchedItem['episode']) => void;
+  markSeasonWatched: (media: SavedMedia, seasonNumber: number, episodes: CineSrcEpisode[]) => void;
   removeFromWatched: (type: SavedMedia['type'], id: string, episode?: WatchedItem['episode']) => void;
+  removeSeasonWatched: (type: SavedMedia['type'], id: string, seasonNumber: number) => void;
   isWatched: (type: SavedMedia['type'], id: string, episode?: WatchedItem['episode']) => boolean;
   replaceWatchlist: (items: SavedMedia[]) => void;
   replaceWatched: (items: WatchedItem[]) => void;
@@ -168,9 +170,37 @@ export function MediaLibraryProvider({ children }: { children: ReactNode }) {
     const key = watchedMediaKey(media.type, media.item.id, episode);
     setWatched((current) => [entry, ...current.filter((item) => watchedMediaKey(item.type, item.item.id, item.episode) !== key)]);
   }, []);
+
+  const markSeasonWatched = useCallback((media: SavedMedia, seasonNumber: number, episodes: CineSrcEpisode[]) => {
+    setWatched((current) => {
+      const entries = episodes.map((episode) => ({
+        ...media,
+        watchedAt: Date.now(),
+        episode: {
+          seasonNumber,
+          episodeNumber: episode.episodeNumber,
+          name: episode.name,
+        },
+      }));
+      const keys = new Set(entries.map((entry) => watchedMediaKey(entry.type, entry.item.id, entry.episode)));
+      return [
+        ...current.filter((entry) => !keys.has(watchedMediaKey(entry.type, entry.item.id, entry.episode))),
+        ...entries,
+      ];
+    });
+  }, []);
+
   const removeFromWatched = useCallback((type: SavedMedia['type'], id: string, episode?: WatchedItem['episode']) => {
     const key = watchedMediaKey(type, id, episode);
     setWatched((current) => current.filter((item) => watchedMediaKey(item.type, item.item.id, item.episode) !== key));
+  }, []);
+  const removeSeasonWatched = useCallback((type: SavedMedia['type'], id: string, seasonNumber: number) => {
+    setWatched((current) => current.filter((item) =>
+      item.type !== type
+      || item.item.id !== id
+      || !item.episode
+      || item.episode.seasonNumber !== seasonNumber
+    ));
   }, []);
   const isWatched = useCallback((type: SavedMedia['type'], id: string, episode?: WatchedItem['episode']) => {
     const key = watchedMediaKey(type, id, episode);
@@ -191,12 +221,14 @@ export function MediaLibraryProvider({ children }: { children: ReactNode }) {
       removeFromContinueWatching,
       isInWatchlist,
       markWatched,
+      markSeasonWatched,
       removeFromWatched,
+      removeSeasonWatched,
       isWatched,
       replaceWatchlist,
       replaceWatched,
     }),
-    [watchlist, continueWatching, watched, storageError, toggleWatchlist, addToContinueWatching, removeFromWatchlist, removeFromContinueWatching, isInWatchlist, markWatched, removeFromWatched, isWatched, replaceWatchlist, replaceWatched]
+    [watchlist, continueWatching, watched, storageError, toggleWatchlist, addToContinueWatching, removeFromWatchlist, removeFromContinueWatching, isInWatchlist, markWatched, markSeasonWatched, removeFromWatched, removeSeasonWatched, isWatched, replaceWatchlist, replaceWatched]
   );
 
   return <MediaLibraryContext.Provider value={value}>{children}</MediaLibraryContext.Provider>;

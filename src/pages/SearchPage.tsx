@@ -28,9 +28,6 @@ export function SearchPage() {
   const movies = results?.movies || [];
   const tvShows = results?.tvShows || [];
 
-  const currentItems = activeTab === 'movies' ? movies : tvShows;
-  const currentType = activeTab === 'movies' ? 'movie' : 'tv';
-
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -54,7 +51,7 @@ export function SearchPage() {
             }
             className="flex-1"
           />
-          <Button type="submit" disabled={!query.trim() || loading}>Search</Button>
+          <Button type="submit" className="!text-black" disabled={!query.trim() || loading}>Search</Button>
         </div>
       </form>
 
@@ -102,10 +99,35 @@ export function SearchPage() {
         </div>
       )}
 
-      {query && (
+      {query && activeTab === 'all' && (
+        <div className="space-y-10">
+          <section aria-labelledby="movie-search-results">
+            <h2 id="movie-search-results" className="mb-4 text-xl font-bold text-dark-900 dark:text-white">Movies</h2>
+            <MediaGrid
+              items={movies}
+              type="movie"
+              loading={loading}
+              error={error}
+              emptyMessage={error ? `Error: ${error}` : `No movies found for "${query}"`}
+            />
+          </section>
+          <section aria-labelledby="tv-search-results">
+            <h2 id="tv-search-results" className="mb-4 text-xl font-bold text-dark-900 dark:text-white">TV Shows</h2>
+            <MediaGrid
+              items={tvShows}
+              type="tv"
+              loading={loading}
+              error={error}
+              emptyMessage={error ? `Error: ${error}` : `No TV shows found for "${query}"`}
+            />
+          </section>
+        </div>
+      )}
+
+      {query && activeTab !== 'all' && (
         <MediaGrid
-          items={currentItems}
-          type={currentType}
+          items={activeTab === 'movies' ? movies : tvShows}
+          type={activeTab === 'movies' ? 'movie' : 'tv'}
           loading={loading}
           error={error}
           emptyMessage={error ? `Error: ${error}` : `No results found for "${query}"`}

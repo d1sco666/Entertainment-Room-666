@@ -1,4 +1,46 @@
 export type DubLanguage = 'en' | 'es' | 'ESP' | 'LAT' | 'SUB';
+export type OkRuLanguage = 'en' | 'es';
+
+interface OkRuCatalog {
+  movies?: Record<string, Partial<Record<OkRuLanguage, string>>>;
+  tv?: Record<string, Record<string, Record<string, Partial<Record<OkRuLanguage, string>>>>>;
+}
+
+let okRuCatalogPromise: Promise<OkRuCatalog> | null = null;
+
+function validateOkRuEmbedUrl(value: string) {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('The OK.ru catalog contains an invalid embed URL.');
+  }
+
+  const allowedHosts = new Set(['ok.ru', 'www.ok.ru', 'm.ok.ru']);
+  if (
+    url.protocol !== 'https:' ||
+    !allowedHosts.has(url.hostname.toLowerCase()) ||
+    !/^\/video(embed)?\/\d+(?:\/?$|\?)/.test(url.pathname + url.search)
+  ) {
+    throw new Error('Only direct OK.ru video embed URLs are supported.');
+  }
+  return url.toString();
+}
+
+async function getOkRuCatalog() {
+  if (!okRuCatalogPromise) {
+    okRuCatalogPromise = fetch('/okru-catalog.json', { cache: 'no-cache' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('The OK.ru content catalog could not be loaded.');
+        return await response.json() as OkRuCatalog;
+      })
+      .catch((error) => {
+        okRuCatalogPromise = null;
+        throw error instanceof Error ? error : new Error('The OK.ru content catalog could not be loaded.');
+      });
+  }
+  return okRuCatalogPromise;
+}
 
 function validateMediaIds(tmdbId: number | undefined, season?: number, episode?: number) {
   if (!tmdbId || !Number.isSafeInteger(tmdbId) || tmdbId < 1) {
@@ -42,12 +84,27 @@ export function getZxcstreamEpisodePlayerUrl(
   return url.toString();
 }
 
-export function getAetherMovieEmbedUrl(tmdbId?: number) {
+export async function getOkRuMovieEmbedUrl(tmdbId: number | undefined, language: OkRuLanguage) {
   validateMediaIds(tmdbId);
-  return `https://aether.st/embed/movie/${tmdbId}`;
+  const catalog = await getOkRuCatalog();
+  const embedUrl = catalog.movies?.[String(tmdbId)]?.[language];
+  if (!embedUrl) {
+    throw new Error(`No authorized OK.ru ${language === 'en' ? 'English' : 'Spanish'} embed is available for this movie.`);
+  }
+  return validateOkRuEmbedUrl(embedUrl);
 }
 
-export function getAetherEpisodeEmbedUrl(tmdbId: number | undefined, season: number, episode: number) {
+export async function getOkRuEpisodeEmbedUrl(
+  tmdbId: number | undefined,
+  season: number,
+  episode: number,
+  language: OkRuLanguage
+) {
   validateMediaIds(tmdbId, season, episode);
-  return `https://aether.st/embed/tv/${tmdbId}/${season}/${episode}`;
+  const catalog = await getOkRuCatalog();
+  const embedUrl = catalog.tv?.[String(tmdbId)]?.[String(season)]?.[String(episode)]?.[language];
+  if (!embedUrl) {
+    throw new Error(`No authorized OK.ru ${language === 'en' ? 'English' : 'Spanish'} embed is available for this episode.`);
+  }
+  return validateOkRuEmbedUrl(embedUrl);
 }

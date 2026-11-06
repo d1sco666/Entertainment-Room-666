@@ -9,7 +9,7 @@ import { useMediaTrailer, useTVShowDetails, useSeasonDetails } from '../hooks/us
 import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatDate, formatRuntime } from '../utils/helpers';
 import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
-import { getVidstuckEpisodeEmbedUrl, getZxcstreamEpisodePlayerUrl, getAetherEpisodeEmbedUrl } from '../utils/additionalPlayers';
+import { getVidstuckEpisodeEmbedUrl, getZxcstreamEpisodePlayerUrl, getOkRuEpisodeEmbedUrl } from '../utils/additionalPlayers';
 import { useState } from 'react';
 import type { CineSrcEpisode } from '../types';
 
@@ -17,7 +17,7 @@ export function TVShowPage() {
   const { id } = useParams<{ id: string }>();
   const { show, loading, error } = useTVShowDetails(id!);
   const trailer = useMediaTrailer('tv', show?.tmdbId);
-  const { addToContinueWatching, toggleWatchlist, isInWatchlist, isWatched, markWatched, removeFromWatched } = useMediaLibrary();
+  const { addToContinueWatching, toggleWatchlist, isInWatchlist, isWatched, markWatched, markSeasonWatched, removeSeasonWatched, removeFromWatched } = useMediaLibrary();
 
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [selectedEpisode, setSelectedEpisode] = useState<CineSrcEpisode | null>(null);
@@ -76,6 +76,13 @@ export function TVShowPage() {
   const selectedEpisodeWatched = selectedEpisode
     ? isWatched('tv', show.id, selectedEpisodeRef)
     : false;
+  const seasonWatched = season?.episodes.length
+    ? season.episodes.every((episode) => isWatched('tv', show.id, {
+        seasonNumber: selectedSeason,
+        episodeNumber: episode.episodeNumber,
+        name: episode.name,
+      }))
+    : false;
   const ageRating = show.ageRating || show.contentRating || show.certification || 'N/A';
 
   return (
@@ -119,10 +126,18 @@ export function TVShowPage() {
               unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
             },
             {
-              id: 'aether',
-              name: 'Aether',
-              getSrc: () => getAetherEpisodeEmbedUrl(show.tmdbId, selectedSeason, selectedEpisode.episodeNumber),
-              unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
+              id: 'okru',
+              name: 'OK.ru',
+              languageOptions: [
+                { value: 'en', label: 'English' },
+                { value: 'es', label: 'Spanish' },
+              ],
+              getSrc: (language) => getOkRuEpisodeEmbedUrl(
+                show.tmdbId,
+                selectedSeason,
+                selectedEpisode.episodeNumber,
+                language === 'es' ? 'es' : 'en'
+              ),
             },
           ]}
           onClose={() => setShowPlayer(false)}
@@ -220,19 +235,41 @@ export function TVShowPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Seasons</CardTitle>
-                <select
-                  value={selectedSeason}
-                  onChange={(e) => {
-                    setSelectedSeason(Number(e.target.value));
-                    setSelectedEpisode(null);
-                  }}
-                  className="px-3 py-1.5 text-sm border border-dark-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-800 text-dark-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  aria-label="Select season"
-                >
-                  {Array.from({ length: show.numberOfSeasons }, (_, i) => i + 1).map((seasonNum) => (
-                    <option key={seasonNum} value={seasonNum}>Season {seasonNum}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={seasonWatched ? 'secondary' : 'outline'}
+                    disabled={!season?.episodes.length}
+                    aria-pressed={seasonWatched}
+                    aria-label={`${seasonWatched ? 'Unmark' : 'Mark'} season ${selectedSeason} as watched`}
+                    onClick={() => seasonWatched
+                      ? removeSeasonWatched('tv', show.id, selectedSeason)
+                      : season && markSeasonWatched({ type: 'tv', item: show }, selectedSeason, season.episodes)}
+                  >
+                    {seasonWatched ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-400">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="m5 12 4 4L19 6" />
+                        </svg>
+                        Season watched
+                      </span>
+                    ) : 'Mark season watched'}
+                  </Button>
+                  <select
+                    value={selectedSeason}
+                    onChange={(e) => {
+                      setSelectedSeason(Number(e.target.value));
+                      setSelectedEpisode(null);
+                    }}
+                    className="px-3 py-1.5 text-sm border border-dark-300 dark:border-dark-600 rounded-lg bg-white dark:bg-dark-800 text-dark-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    aria-label="Select season"
+                  >
+                    {Array.from({ length: show.numberOfSeasons }, (_, i) => i + 1).map((seasonNum) => (
+                      <option key={seasonNum} value={seasonNum}>Season {seasonNum}</option>
+                    ))}
+                  </select>
+                </div>
               </CardHeader>
               <CardContent>
                 {seasonLoading ? (
