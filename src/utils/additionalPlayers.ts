@@ -77,3 +77,19 @@ export function getAnyEmbedEpisodePlayerUrl(
   validateMediaIds(tmdbId, season, episode);
   return `https://anyembed.xyz/embed/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
 }
+
+export function getKissKhEpisodePlayerUrl(
+  title: string,
+  season: number,
+  episode: number
+) {
+  if (!title.trim()) throw new Error('A TV show title is required to search KissKH.');
+  if (!Number.isSafeInteger(season) || season < 1 || !Number.isSafeInteger(episode) || episode < 1) {
+    throw new Error('Valid season and episode numbers are required to open this episode.');
+  }
+  const url = new URL('/api/kisskh/player', window.location.origin);
+  url.searchParams.set('title', title.trim());
+  url.searchParams.set('season', String(season));
+  url.searchParams.set('episode', String(episode));
+  return url.toString();
+}
