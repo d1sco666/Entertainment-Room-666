@@ -64,20 +64,6 @@ export function getSuperEmbedEpisodePlayerUrl(
   return url.toString();
 }
 
-export function getVideasyMoviePlayerUrl(tmdbId: number | undefined) {
-  validateMediaIds(tmdbId);
-  return `https://player.videasy.to/movie/${encodeURIComponent(String(tmdbId))}`;
-}
-
-export function getVideasyEpisodePlayerUrl(
-  tmdbId: number | undefined,
-  season: number,
-  episode: number
-) {
-  validateMediaIds(tmdbId, season, episode);
-  return `https://player.videasy.to/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
-}
-
 export function getAnyEmbedMoviePlayerUrl(tmdbId: number | undefined) {
   validateMediaIds(tmdbId);
   return `https://anyembed.xyz/embed/movie/${encodeURIComponent(String(tmdbId))}`;

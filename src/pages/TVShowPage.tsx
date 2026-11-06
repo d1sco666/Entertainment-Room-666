@@ -12,7 +12,6 @@ import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
 import {
   getAnyEmbedEpisodePlayerUrl,
   getSuperEmbedEpisodePlayerUrl,
-  getVideasyEpisodePlayerUrl,
   getVidstuckEpisodeEmbedUrl,
   getZxcstreamEpisodePlayerUrl,
 } from '../utils/additionalPlayers';
@@ -135,16 +134,6 @@ export function TVShowPage() {
               id: 'superembed',
               name: 'SuperEmbed',
               getSrc: () => getSuperEmbedEpisodePlayerUrl(
-                show.tmdbId,
-                selectedSeason,
-                selectedEpisode.episodeNumber
-              ),
-              unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
-            },
-            {
-              id: 'videasy',
-              name: 'Videasy',
-              getSrc: () => getVideasyEpisodePlayerUrl(
                 show.tmdbId,
                 selectedSeason,
                 selectedEpisode.episodeNumber
