@@ -3,7 +3,7 @@ import { VideoPlayer } from './VideoPlayer';
 import type { DubLanguage } from '../../utils/additionalPlayers';
 
 interface PlaybackProvider {
-  id: 'vimeus' | 'cinesrc' | 'vidstuck' | 'zxcstream' | 'pelmaster' | 'superembed' | 'anyembed' | 'kisskh';
+  id: 'vimeus' | 'cinesrc' | 'vidstuck' | 'zxcstream' | 'pelmaster' | 'superembed' | 'anyembed';
   name: string;
   getSrc: (dubLanguage?: DubLanguage) => string | Promise<string>;
   languageOptions?: { value: DubLanguage; label: string }[];

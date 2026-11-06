@@ -77,17 +77,3 @@ export function getAnyEmbedEpisodePlayerUrl(
   validateMediaIds(tmdbId, season, episode);
   return `https://anyembed.xyz/embed/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
 }
-
-export async function getKissKhMoviePlayerUrl(title: string, year?: number) {
-  if (!title.trim()) throw new Error('A movie title is required to search KissKH.');
-  const url = new URL('/api/kisskh/movie', window.location.origin);
-  url.searchParams.set('title', title.trim());
-  if (year && Number.isSafeInteger(year)) url.searchParams.set('year', String(year));
-
-  const response = await fetch(url);
-  const data = await response.json().catch(() => null);
-  if (!response.ok || !data?.url) {
-    throw new Error(data?.error || 'This movie could not be resolved from KissKH.');
-  }
-  return data.url as string;
-}
