@@ -77,3 +77,29 @@ export function getAnyEmbedEpisodePlayerUrl(
   validateMediaIds(tmdbId, season, episode);
   return `https://anyembed.xyz/embed/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
 }
+
+async function resolveKissAsian(title: string, episode?: number, year?: number) {
+  if (!title.trim()) throw new Error('A title is required to search KissAsian.');
+  const url = new URL('/api/kissasian/resolve', window.location.origin);
+  url.searchParams.set('title', title.trim());
+  if (episode) url.searchParams.set('episode', String(episode));
+  if (year && Number.isSafeInteger(year)) url.searchParams.set('year', String(year));
+
+  const response = await fetch(url);
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.embedUrl) {
+    throw new Error(data?.error || 'This title could not be resolved from KissAsian.');
+  }
+  return data.embedUrl as string;
+}
+
+export function getKissAsianMoviePlayerUrl(title: string, year?: number) {
+  return resolveKissAsian(title, undefined, year);
+}
+
+export function getKissAsianEpisodePlayerUrl(title: string, episode: number) {
+  if (!Number.isSafeInteger(episode) || episode < 1) {
+    throw new Error('A valid episode number is required.');
+  }
+  return resolveKissAsian(title, episode);
+}

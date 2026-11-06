@@ -11,6 +11,7 @@ import { formatYear, formatDate, formatRuntime } from '../utils/helpers';
 import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
 import {
   getAnyEmbedEpisodePlayerUrl,
+  getKissAsianEpisodePlayerUrl,
   getSuperEmbedEpisodePlayerUrl,
   getVidstuckEpisodeEmbedUrl,
   getZxcstreamEpisodePlayerUrl,
@@ -149,6 +150,14 @@ export function TVShowPage() {
                 selectedEpisode.episodeNumber
               ),
               unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
+            },
+            {
+              id: 'kissasian',
+              name: 'KissAsian',
+              getSrc: () => getKissAsianEpisodePlayerUrl(
+                show.name,
+                selectedEpisode.episodeNumber
+              ),
             },
           ]}
           onClose={() => setShowPlayer(false)}

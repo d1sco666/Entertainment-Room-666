@@ -12,6 +12,7 @@ import { formatYear, formatRuntime, formatDate } from '../utils/helpers';
 import { getVimeusMovieEmbedUrl } from '../utils/vimeus';
 import {
   getAnyEmbedMoviePlayerUrl,
+  getKissAsianMoviePlayerUrl,
   getSuperEmbedMoviePlayerUrl,
   getVidstuckMovieEmbedUrl,
   getZxcstreamMoviePlayerUrl,
@@ -104,6 +105,14 @@ export function MoviePage() {
             name: 'AnyEmbed',
             getSrc: () => getAnyEmbedMoviePlayerUrl(movie.tmdbId),
             unavailableReason: !movie.tmdbId ? 'A TMDB ID is required' : undefined,
+          },
+          {
+            id: 'kissasian',
+            name: 'KissAsian',
+            getSrc: () => getKissAsianMoviePlayerUrl(
+              movie.title,
+              movie.releaseDate ? Number(movie.releaseDate.slice(0, 4)) : undefined
+            ),
           },
         ]}
         onClose={() => setShowPlayer(false)}
