@@ -13,6 +13,7 @@ function HomeRow({
   loading,
   error,
   emptyMessage,
+  onRemove,
 }: {
   title: string;
   items: (CineSrcMovie | CineSrcTVShow)[] | undefined;
@@ -20,6 +21,7 @@ function HomeRow({
   loading?: boolean;
   error?: string | null;
   emptyMessage?: string;
+  onRemove?: (item: CineSrcMovie | CineSrcTVShow, type: 'movie' | 'tv') => void;
 }) {
   const resolvedType = types?.[0] ?? 'movie';
   const safeItems = items ?? [];
@@ -39,13 +41,15 @@ function HomeRow({
         error={error}
         emptyMessage={emptyMessage}
         glossyCards
+        onRemove={onRemove}
+        removeLabel={`Remove from ${title}`}
       />
     </section>
   );
 }
 
 export function Home() {
-  const { continueWatching, storageError } = useMediaLibrary();
+  const { continueWatching, removeFromContinueWatching, storageError } = useMediaLibrary();
   const { movies: trendingMovies, loading: trendingMoviesLoading, error: trendingMoviesError } = useTrendingMovies();
   const { shows: trendingShows, loading: trendingShowsLoading, error: trendingShowsError } = useTrendingTVShows();
   const { movies: popularMovies, loading: popularMoviesLoading, error: popularMoviesError } = usePopularMovies();
@@ -66,6 +70,7 @@ export function Home() {
           types={continueWatching.filter((e) => e.type === 'movie').map((e) => e.type)}
           loading={false}
           emptyMessage=""
+          onRemove={(item) => removeFromContinueWatching('movie', item.id)}
         />
 
         <HomeRow
@@ -74,6 +79,7 @@ export function Home() {
           types={continueWatching.filter((e) => e.type === 'tv').map((e) => e.type)}
           loading={false}
           emptyMessage=""
+          onRemove={(item) => removeFromContinueWatching('tv', item.id)}
         />
 
         <MediaCarousel

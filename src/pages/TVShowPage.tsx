@@ -9,7 +9,11 @@ import { useMediaTrailer, useTVShowDetails, useSeasonDetails } from '../hooks/us
 import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { formatYear, formatDate, formatRuntime } from '../utils/helpers';
 import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
-import { getVidstuckEpisodeEmbedUrl, getZxcstreamEpisodePlayerUrl } from '../utils/additionalPlayers';
+import {
+  getHnEmbedEpisodePlayerUrl,
+  getVidstuckEpisodeEmbedUrl,
+  getZxcstreamEpisodePlayerUrl,
+} from '../utils/additionalPlayers';
 import { useState } from 'react';
 import type { CineSrcEpisode } from '../types';
 
@@ -122,6 +126,16 @@ export function TVShowPage() {
                 selectedSeason,
                 selectedEpisode.episodeNumber,
                 'en'
+              ),
+              unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
+            },
+            {
+              id: 'hnembed',
+              name: 'HN Embed',
+              getSrc: () => getHnEmbedEpisodePlayerUrl(
+                show.tmdbId,
+                selectedSeason,
+                selectedEpisode.episodeNumber
               ),
               unavailableReason: !show.tmdbId ? 'A TMDB ID is required' : undefined,
             },

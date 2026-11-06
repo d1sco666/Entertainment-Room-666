@@ -41,3 +41,17 @@ export function getZxcstreamEpisodePlayerUrl(
   url.searchParams.set('dubLang', dubLanguage);
   return url.toString();
 }
+
+export function getHnEmbedMoviePlayerUrl(tmdbId: number | undefined) {
+  validateMediaIds(tmdbId);
+  return `https://hnembed.cc/embed/movie/${encodeURIComponent(String(tmdbId))}`;
+}
+
+export function getHnEmbedEpisodePlayerUrl(
+  tmdbId: number | undefined,
+  season: number,
+  episode: number
+) {
+  validateMediaIds(tmdbId, season, episode);
+  return `https://hnembed.cc/embed/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
+}

@@ -10,6 +10,8 @@ interface MediaCarouselProps {
   error?: string | null;
   emptyMessage?: string;
   glossyCards?: boolean;
+  onRemove?: (item: CineSrcMovie | CineSrcTVShow, type: 'movie' | 'tv') => void;
+  removeLabel?: string;
 }
 
 function MediaCarouselComponent({
@@ -19,6 +21,8 @@ function MediaCarouselComponent({
   error,
   emptyMessage = 'No titles available',
   glossyCards = false,
+  onRemove,
+  removeLabel,
 }: MediaCarouselProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -76,7 +80,14 @@ function MediaCarouselComponent({
             ))
           : items.map((item) => (
               <div className="w-32 flex-none snap-start sm:w-40 lg:w-48" key={item.id}>
-                <MediaCard item={item} type={type} glossySurface={glossyCards} />
+                <MediaCard
+                  item={item}
+                  type={type}
+                  glossySurface={glossyCards}
+                  onRemove={onRemove ? () => onRemove(item, type) : undefined}
+                  removeLabel={removeLabel}
+                  removeIconOnly
+                />
               </div>
             ))}
       </div>
