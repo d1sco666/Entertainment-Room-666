@@ -46,15 +46,21 @@ function findResults(html: string, query: string) {
   const queryWords = normalizedQuery.split(/\s+/).filter((word) => word.length >= 2);
   const results = new Map<string, SearchResult>();
 
-  for (const match of html.matchAll(/data-id=["'](\d{6,})["']/g)) {
+  for (const match of html.matchAll(/\/video(?:embed)?\/(\d{6,})(?:\/|["'?])/g)) {
     const id = match[1];
     if (results.has(id)) continue;
 
-    const start = Math.max(0, match.index - 500);
-    const end = Math.min(html.length, match.index + 4000);
+    const start = match.index;
+    const nextId = html.indexOf('data-id=', start + 20);
+    const end = Math.min(html.length, start + 1800, nextId === -1 ? html.length : nextId);
     const card = html.slice(start, end);
     const altMatch = card.match(/<img[^>]+alt=["']([^"']+)["'][^>]*>/i);
-    const title = altMatch ? decodeHtml(altMatch[1]).trim() : '';
+    const headingMatch = card.match(/(?:video-card_n|video-card__title)[^>]*>([^<]+)/i);
+    const title = altMatch
+      ? decodeHtml(altMatch[1]).trim()
+      : headingMatch
+        ? decodeHtml(headingMatch[1]).replace(/<[^>]+>/g, '').trim()
+        : '';
     const normalizedTitle = normalize(title);
     let score = 0;
 
@@ -95,28 +101,54 @@ async function searchOkRu(request: Request) {
     type === 'tv' && episode ? `E${episode.padStart(2, '0')}` : '',
   ].filter(Boolean).join(' ');
 
-  try {
-    const response = await fetch(`${OKRU_SEARCH_URL}?${new URLSearchParams({ 'st.query': searchTerms })}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-        Accept: 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      cf: { cacheTtl: 3600 },
-    } as RequestInit);
+  const variants = [
+    searchTerms,
+    [query, year].filter(Boolean).join(' '),
+    query,
+    type === 'tv' && season ? `${query} сезон ${season}` : '',
+    type === 'tv' && season && episode ? `${query} серия ${episode}` : '',
+  ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
 
-    if (!response.ok) {
-      return json({ ok: false, error: 'OK.ru search is unavailable.' }, 502);
+  try {
+    const candidates = new Map<string, SearchResult>();
+
+    for (const variant of variants) {
+      const response = await fetch(`${OKRU_SEARCH_URL}?${new URLSearchParams({ 'st.query': variant })}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          Accept: 'text/html,application/xhtml+xml',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        cf: { cacheTtl: 3600 },
+      } as RequestInit);
+
+      if (!response.ok) continue;
+      const html = await response.text();
+      for (const result of findResults(html, variant)) {
+        candidates.set(result.id, result);
+      }
+      if (candidates.size >= 20) break;
     }
 
-    const html = await response.text();
-    const results = findResults(html, searchTerms);
-    const confidentResult = (results[0]?.score ?? 0) >= 2 ? results[0] : undefined;
-    return json({
-      ok: true,
-      embedUrl: confidentResult?.embedUrl ?? null,
-      results: confidentResult ? results : [],
-    });
+    const candidateList = [...candidates.values()].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    for (const candidate of candidateList.slice(0, 20)) {
+      if (!candidate.title || (candidate.score ?? 0) < 2) continue;
+      const resolveUrl = new URL('https://worker.invalid/api/okru/resolve');
+      resolveUrl.searchParams.set('url', candidate.embedUrl);
+      const resolvedResponse = await resolveOkRu(new Request(resolveUrl.toString()));
+      const resolved = await resolvedResponse.json() as { directUrl?: string; qualities?: unknown[] };
+      if (resolved.directUrl) {
+        return json({
+          ok: true,
+          embedUrl: candidate.embedUrl,
+          directUrl: resolved.directUrl,
+          qualities: resolved.qualities ?? [],
+          results: [{ ...candidate, directUrl: resolved.directUrl }],
+        });
+      }
+    }
+
+    return json({ ok: true, embedUrl: null, directUrl: null, results: [] });
   } catch {
     return json({ ok: false, error: 'OK.ru search could not be completed.' }, 502);
   }

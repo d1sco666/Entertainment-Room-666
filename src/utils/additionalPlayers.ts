@@ -125,7 +125,13 @@ export async function getOkRuMovieEmbedUrl(
     throw new Error('OK.ru could not find an embeddable result for this movie.');
   }
 
-  const result = await response.json() as { embedUrl?: string };
+  const result = await response.json() as { embedUrl?: string; directUrl?: string };
+  if (!result.embedUrl && !result.directUrl) {
+    throw new Error('No public OK.ru embed was found for this movie.');
+  }
+  if (result.directUrl) {
+    return result.directUrl;
+  }
   if (!result.embedUrl) {
     throw new Error('No public OK.ru embed was found for this movie.');
   }
@@ -163,7 +169,13 @@ export async function getOkRuEpisodeEmbedUrl(
     throw new Error('OK.ru could not find an embeddable result for this episode.');
   }
 
-  const result = await response.json() as { embedUrl?: string };
+  const result = await response.json() as { embedUrl?: string; directUrl?: string };
+  if (!result.embedUrl && !result.directUrl) {
+    throw new Error('No public OK.ru embed was found for this episode.');
+  }
+  if (result.directUrl) {
+    return result.directUrl;
+  }
   if (!result.embedUrl) {
     throw new Error('No public OK.ru embed was found for this episode.');
   }
