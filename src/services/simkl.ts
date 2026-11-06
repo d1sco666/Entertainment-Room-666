@@ -220,6 +220,23 @@ function unwrapItems(response: { movies?: SimklItem[]; shows?: SimklItem[] }, ty
     .filter((entry) => type === 'movie' ? Boolean(entry.movie) : Boolean(entry.show));
 }
 
+const SIMKL_WATCHLIST_STATUSES = ['plantowatch'] as const;
+
+async function loadRemoteWatchlist() {
+  const entries: { type: SavedMedia['type']; title: SimklTitle }[] = [];
+  for (const status of SIMKL_WATCHLIST_STATUSES) {
+    const [movies, shows] = await Promise.all([
+      simklRequest<{ movies?: SimklItem[] }>(`/sync/all-items/movies/${status}`),
+      simklRequest<{ shows?: SimklItem[] }>(`/sync/all-items/shows/${status}`),
+    ]);
+    entries.push(
+      ...unwrapItems(movies, 'movie').map((entry) => ({ type: 'movie' as const, title: entry.movie! })),
+      ...unwrapItems(shows, 'tv').map((entry) => ({ type: 'tv' as const, title: entry.show! })),
+    );
+  }
+  return entries;
+}
+
 function tmdbId(title: SimklTitle) {
   return title.ids.tmdb === undefined ? '' : String(title.ids.tmdb);
 }
@@ -255,7 +272,8 @@ function mapRemoteWatched(
     watchedAt?: string;
     episode?: { season: number; number: number; watchedAt?: string };
   }[] = [];
-  for (const entry of unwrapItems(response, type)) {
+  const entries = unwrapItems(response, type);
+  for (const entry of entries) {
     const title = type === 'movie' ? entry.movie! : entry.show!;
     if (type === 'movie') {
       if (entry.status === 'completed' || entry.last_watched_at || entry.watched_at) {
@@ -411,20 +429,18 @@ export const simklAPI = {
   },
 
   async syncLibrary(localWatchlist: SavedMedia[], localWatched: WatchedItem[]): Promise<SyncResult> {
-    const remoteWatchlistMovies = await simklRequest<{ movies?: SimklItem[] }>('/sync/all-items/movies/plantowatch');
-    const remoteWatchlistShows = await simklRequest<{ shows?: SimklItem[] }>('/sync/all-items/shows/plantowatch');
-    const remoteLibrary = await simklRequest<{ movies?: SimklItem[]; shows?: SimklItem[] }>('/sync/all-items?extended=full&include_all_episodes=yes&episode_watched_at=yes');
+    const [remoteWatchlist, remoteMovieLibrary, remoteShowLibrary] = await Promise.all([
+      loadRemoteWatchlist(),
+      simklRequest<{ movies?: SimklItem[] }>('/sync/all-items/movies?extended=full&include_all_episodes=yes&episode_watched_at=yes'),
+      simklRequest<{ shows?: SimklItem[] }>('/sync/all-items/shows?extended=full&include_all_episodes=yes&episode_watched_at=yes'),
+    ]);
     const remoteTrackedTitles = [
-      ...unwrapItems(remoteLibrary, 'movie').map((entry) => ({ type: 'movie' as const, title: entry.movie! })),
-      ...unwrapItems(remoteLibrary, 'tv').map((entry) => ({ type: 'tv' as const, title: entry.show! })),
-    ];
-    const remoteWatchlist = [
-      ...unwrapItems(remoteWatchlistMovies, 'movie').map((entry) => ({ type: 'movie' as const, title: entry.movie! })),
-      ...unwrapItems(remoteWatchlistShows, 'tv').map((entry) => ({ type: 'tv' as const, title: entry.show! })),
+      ...unwrapItems(remoteMovieLibrary, 'movie').map((entry) => ({ type: 'movie' as const, title: entry.movie! })),
+      ...unwrapItems(remoteShowLibrary, 'tv').map((entry) => ({ type: 'tv' as const, title: entry.show! })),
     ];
     const remoteWatchedEntries = [
-      ...mapRemoteWatched(remoteLibrary, 'movie'),
-      ...mapRemoteWatched(remoteLibrary, 'tv'),
+      ...mapRemoteWatched(remoteMovieLibrary, 'movie'),
+      ...mapRemoteWatched(remoteShowLibrary, 'tv'),
     ];
 
     const remoteWatchlistKeys = remoteWatchlist
