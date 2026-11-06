@@ -60,6 +60,84 @@ async function searchKissKh(title: string) {
   );
 }
 
+function numericId(value: unknown) {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 1) return value;
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    const parsed = Number(value.trim());
+    if (Number.isSafeInteger(parsed) && parsed >= 1) return parsed;
+  }
+  return null;
+}
+
+function getEpisodeId(item: Record<string, unknown>) {
+  return numericId(item.episodeId)
+    ?? numericId(item.id)
+    ?? numericId(item.Id)
+    ?? null;
+}
+
+function getEpisodeNumber(item: Record<string, unknown>) {
+  return numericId(item.number)
+    ?? numericId(item.episodeNumber)
+    ?? numericId(item.episode)
+    ?? null;
+}
+
+async function resolveKissKhEpisodeId(episodeId: number) {
+  let resolved = await fetchJson(`${KISSKH_API}/resolve/${episodeId}`);
+
+  let subtitles: Array<{ file?: string; label?: string; kind?: string }> = [];
+  if (!resolved) {
+    const source = await fetchJson(
+      `${KISSKH_DIRECT_API}/Episode/GetSources?episodeId=${episodeId}`
+    );
+    const subtitleResponse = await fetchJson(
+      `${KISSKH_DIRECT_API}/Sub/GetByEpisodeId?episodeId=${episodeId}`
+    );
+    if (source && typeof source === 'object') {
+      resolved = source;
+      subtitles = Array.isArray(subtitleResponse)
+        ? subtitleResponse.map((item: Record<string, unknown>) => ({
+            file: typeof (item.src ?? item.file ?? item.url) === 'string'
+              ? String(item.src ?? item.file ?? item.url)
+              : undefined,
+            label: typeof (item.label ?? item.name) === 'string'
+              ? String(item.label ?? item.name)
+              : 'Subtitle',
+            kind: typeof item.kind === 'string' ? item.kind : 'captions',
+          })).filter((item: { file?: string }) => item.file)
+        : [];
+    }
+  } else if (Array.isArray(resolved.subtitles)) {
+    subtitles = resolved.subtitles.map((item: Record<string, unknown>) => ({
+      file: typeof (item.src ?? item.file ?? item.url) === 'string'
+        ? String(item.src ?? item.file ?? item.url)
+        : undefined,
+      label: typeof (item.label ?? item.name) === 'string'
+        ? String(item.label ?? item.name)
+        : 'Subtitle',
+      kind: typeof item.kind === 'string' ? item.kind : 'captions',
+    })).filter((item: { file?: string }) => item.file);
+  }
+
+  const stream = resolved?.stream && typeof resolved.stream === 'object'
+    ? resolved.stream
+    : {};
+  const videoUrl =
+    stream.Video
+    ?? stream.video
+    ?? stream.BackupVideo
+    ?? stream.backupVideo
+    ?? stream.ThirdVideo
+    ?? resolved?.videoUrl
+    ?? resolved?.video
+    ?? resolved?.Video
+    ?? resolved?.src;
+  if (typeof videoUrl !== 'string' || !videoUrl.trim()) return null;
+
+  return { title: `KissKH Episode ${episodeId}`, videoUrl, subtitles };
+}
+
 async function resolveKissKh(title: string, episodeNumber: number) {
   const results = await searchKissKh(title);
   if (!Array.isArray(results)) return null;
@@ -71,26 +149,33 @@ async function resolveKissKh(title: string, episodeNumber: number) {
     normalizeTitle(item.title ?? '').includes(wanted) ||
     wanted.includes(normalizeTitle(item.title ?? ''))
   ) ?? results[0];
-  if (!match?.id) return null;
+  const matchId = numericId(match?.id)
+    ?? numericId(match?.dramaId)
+    ?? numericId(match?.DramaId)
+    ?? null;
+  if (!matchId) return null;
 
-  const info = await fetchJson(`${KISSKH_API}/info/${encodeURIComponent(String(match.id))}`);
+  const info = await fetchJson(`${KISSKH_API}/info/${matchId}`);
   const directInfo = info ?? await fetchJson(
-    `${KISSKH_DIRECT_API}/DramaList/Drama/${encodeURIComponent(String(match.id))}?isq=false`
+    `${KISSKH_DIRECT_API}/DramaList/Drama/${matchId}?isq=false`
   );
   if (!directInfo?.episodes || !Array.isArray(directInfo.episodes)) return null;
 
-  const episode = directInfo.episodes.find((item: { number?: number }) => item.number === episodeNumber);
-  if (!episode?.id) return null;
+  const episode = directInfo.episodes.find((item: Record<string, unknown>) =>
+    getEpisodeNumber(item) === episodeNumber
+  );
+  const episodeId = episode ? getEpisodeId(episode) : null;
+  if (!episodeId) return null;
 
   let resolved = await fetchJson(
-    `${KISSKH_API}/resolve/${encodeURIComponent(String(episode.id))}`
+    `${KISSKH_API}/resolve/${episodeId}`
   );
   if (!resolved) {
     const source = await fetchJson(
-      `${KISSKH_DIRECT_API}/Episode/GetSources?episodeId=${encodeURIComponent(String(episode.id))}`
+      `${KISSKH_DIRECT_API}/Episode/GetSources?episodeId=${episodeId}`
     );
     const subtitles = await fetchJson(
-      `${KISSKH_DIRECT_API}/Sub/GetByEpisodeId?episodeId=${encodeURIComponent(String(episode.id))}`
+      `${KISSKH_DIRECT_API}/Sub/GetByEpisodeId?episodeId=${episodeId}`
     );
     if (source?.video || source?.Video) {
       resolved = {
@@ -107,8 +192,18 @@ async function resolveKissKh(title: string, episodeNumber: number) {
     }
   }
 
-  const stream = resolved?.stream ?? {};
-  const videoUrl = stream.Video ?? stream.video ?? stream.BackupVideo ?? stream.backupVideo ?? stream.ThirdVideo;
+  const stream = resolved?.stream && typeof resolved.stream === 'object'
+    ? resolved.stream
+    : {};
+  const videoUrl =
+    stream.Video
+    ?? stream.video
+    ?? stream.BackupVideo
+    ?? stream.backupVideo
+    ?? stream.ThirdVideo
+    ?? resolved?.videoUrl
+    ?? resolved?.video
+    ?? resolved?.Video;
   if (!videoUrl) return null;
 
   return {
@@ -161,6 +256,21 @@ export default {
       const title = (url.searchParams.get('title') ?? '').trim();
       const season = Number(url.searchParams.get('season') ?? 1);
       const episode = Number(url.searchParams.get('episode') ?? 1);
+      const episodeId = numericId(url.searchParams.get('episodeId'));
+
+      if (episodeId) {
+        const result = await resolveKissKhEpisodeId(episodeId);
+        if (!result) {
+          return new Response(
+            '<!doctype html><title>Episode unavailable</title><style>body{margin:0;display:grid;place-items:center;height:100vh;background:#000;color:#fff;font-family:system-ui}</style><p>This numeric KissKH episode ID could not be resolved.</p>',
+            { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } },
+          );
+        }
+        return new Response(kissKhPlayerHtml(result), {
+          headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+        });
+      }
+
       if (!title || !Number.isInteger(episode) || episode < 1) {
         return jsonResponse({ ok: false, error: 'Title and episode are required' }, 400);
       }

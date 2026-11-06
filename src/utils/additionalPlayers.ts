@@ -81,15 +81,20 @@ export function getAnyEmbedEpisodePlayerUrl(
 export function getKissKhEpisodePlayerUrl(
   title: string,
   season: number,
-  episode: number
+  episode: number,
+  episodeId?: number
 ) {
   if (!title.trim()) throw new Error('A TV show title is required to search KissKH.');
   if (!Number.isSafeInteger(season) || season < 1 || !Number.isSafeInteger(episode) || episode < 1) {
     throw new Error('Valid season and episode numbers are required to open this episode.');
   }
+  if (episodeId !== undefined && (!Number.isSafeInteger(episodeId) || episodeId < 1)) {
+    throw new Error('A valid numeric KissKH episode ID is required.');
+  }
   const url = new URL('/api/kisskh/player', window.location.origin);
   url.searchParams.set('title', title.trim());
   url.searchParams.set('season', String(season));
   url.searchParams.set('episode', String(episode));
+  if (episodeId !== undefined) url.searchParams.set('episodeId', String(episodeId));
   return url.toString();
 }
