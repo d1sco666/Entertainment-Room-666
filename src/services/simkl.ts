@@ -90,6 +90,8 @@ interface SyncResult {
   imported: number;
   removedLocally: number;
   skipped: number;
+  remoteWatchlist: number;
+  remoteWatched: number;
 }
 
 function getRedirectUri() {
@@ -222,12 +224,55 @@ function unwrapItems(response: { movies?: SimklItem[]; shows?: SimklItem[] }, ty
 
 const SIMKL_WATCHLIST_STATUSES = ['plantowatch'] as const;
 
+async function loadPaginatedAllItems(
+  path: string,
+  collection: 'movies' | 'shows'
+): Promise<{ movies?: SimklItem[]; shows?: SimklItem[] }> {
+  const limit = 5000;
+  const combined = new Map<string, SimklItem>();
+  const seenPages = new Set<string>();
+
+  for (let page = 1; page <= 100; page += 1) {
+    const separator = path.includes('?') ? '&' : '?';
+    const response = await simklRequest<{ movies?: SimklItem[]; shows?: SimklItem[] }>(
+      `${path}${separator}page=${page}&limit=${limit}`
+    );
+    const items = response[collection] ?? [];
+    if (!items.length) break;
+
+    const pageFingerprint = items.map((entry) => {
+      const title = collection === 'movies' ? entry.movie : entry.show;
+      return title?.ids?.tmdb ?? title?.ids?.simkl ?? title?.ids?.slug ?? title?.title ?? '';
+    }).join('|');
+    if (seenPages.has(pageFingerprint)) break;
+    seenPages.add(pageFingerprint);
+
+    let newItems = 0;
+    for (const entry of items) {
+      const title = collection === 'movies' ? entry.movie : entry.show;
+      const key = title?.ids?.tmdb !== undefined ? `tmdb:${title.ids.tmdb}`
+        : title?.ids?.simkl !== undefined ? `simkl:${title.ids.simkl}`
+        : title?.ids?.slug ? `slug:${title.ids.slug}`
+        : title ? `title:${title.title}` : '';
+      if (key && !combined.has(key)) {
+        combined.set(key, entry);
+        newItems += 1;
+      }
+    }
+    if (newItems === 0 || items.length < limit) break;
+  }
+
+  return collection === 'movies'
+    ? { movies: [...combined.values()] }
+    : { shows: [...combined.values()] };
+}
+
 async function loadRemoteWatchlist() {
   const entries: { type: SavedMedia['type']; title: SimklTitle }[] = [];
   for (const status of SIMKL_WATCHLIST_STATUSES) {
     const [movies, shows] = await Promise.all([
-      simklRequest<{ movies?: SimklItem[] }>(`/sync/all-items/movies/${status}`),
-      simklRequest<{ shows?: SimklItem[] }>(`/sync/all-items/shows/${status}`),
+      loadPaginatedAllItems(`/sync/all-items/movies/${status}`, 'movies'),
+      loadPaginatedAllItems(`/sync/all-items/shows/${status}`, 'shows'),
     ]);
     entries.push(
       ...unwrapItems(movies, 'movie').map((entry) => ({ type: 'movie' as const, title: entry.movie! })),
@@ -431,8 +476,8 @@ export const simklAPI = {
   async syncLibrary(localWatchlist: SavedMedia[], localWatched: WatchedItem[]): Promise<SyncResult> {
     const [remoteWatchlist, remoteMovieLibrary, remoteShowLibrary] = await Promise.all([
       loadRemoteWatchlist(),
-      simklRequest<{ movies?: SimklItem[] }>('/sync/all-items/movies?extended=full&include_all_episodes=yes&episode_watched_at=yes'),
-      simklRequest<{ shows?: SimklItem[] }>('/sync/all-items/shows?extended=full&include_all_episodes=yes&episode_watched_at=yes'),
+      loadPaginatedAllItems('/sync/all-items/movies?extended=full&include_all_episodes=yes&episode_watched_at=yes', 'movies'),
+      loadPaginatedAllItems('/sync/all-items/shows?extended=full&include_all_episodes=yes&episode_watched_at=yes', 'shows'),
     ]);
     const remoteTrackedTitles = [
       ...unwrapItems(remoteMovieLibrary, 'movie').map((entry) => ({ type: 'movie' as const, title: entry.movie! })),
@@ -591,7 +636,17 @@ export const simklAPI = {
       watchlist: { local: nextWatchlist.map(idKey), remote: [...remoteWatchlistSet] },
       watched: { local: nextWatched.map(watchedKey), remote: [...remoteWatchedSet] },
     } satisfies SimklSnapshot));
-    return { watchlist: nextWatchlist, watched: nextWatched, addedToSimkl, removedFromSimkl, imported, removedLocally, skipped };
+    return {
+      watchlist: nextWatchlist,
+      watched: nextWatched,
+      addedToSimkl,
+      removedFromSimkl,
+      imported,
+      removedLocally,
+      skipped,
+      remoteWatchlist: remoteWatchlist.length,
+      remoteWatched: remoteWatchedEntries.length,
+    };
   },
 };
 

@@ -47,9 +47,15 @@ export function WatchedPage() {
         <section className="mb-10" aria-labelledby="tv-shows-watched-title">
           <h2 id="tv-shows-watched-title" className="mb-5 text-2xl font-bold text-white">Watched TV Shows</h2>
           <HorizontalCarousel label="Watched TV Shows">
-            {tvShowsWatched.map((entry) => {
-              const subtitle = entry.episode
-                ? `S${entry.episode.seasonNumber.toString().padStart(2, '0')}E${entry.episode.episodeNumber.toString().padStart(2, '0')} · ${entry.episode.name}`
+            {Array.from(new Map(
+              tvShowsWatched.map((entry) => [`${entry.item.id}:${entry.item.tmdbId ?? entry.item.id}`, entry])
+            ).values()).map((entry) => {
+              const episodes = tvShowsWatched.filter((candidate) =>
+                candidate.item.id === entry.item.id
+                && candidate.episode
+              );
+              const subtitle = episodes.length
+                ? `${episodes.length} watched episode${episodes.length === 1 ? '' : 's'}`
                 : 'Watched';
               return (
                 <div className="w-28 flex-none snap-start sm:w-32 lg:w-36" key={`tv-${entry.item.id}-${entry.episode ? `${entry.episode.seasonNumber}-${entry.episode.episodeNumber}` : 'complete'}`}>
@@ -58,7 +64,15 @@ export function WatchedPage() {
                     type="tv"
                     subtitle={subtitle}
                     posterOnly
-                    onRemove={() => removeFromWatched('tv', entry.item.id, entry.episode)}
+                    onRemove={() => {
+                      if (episodes.length) {
+                        for (const episode of episodes) {
+                          removeFromWatched('tv', entry.item.id, episode.episode);
+                        }
+                      } else {
+                        removeFromWatched('tv', entry.item.id);
+                      }
+                    }}
                     removeLabel="Remove from watched history"
                     removeIconOnly
                   />

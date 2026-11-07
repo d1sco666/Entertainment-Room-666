@@ -33,7 +33,8 @@ export function WatchlistPage() {
       replaceWatched(result.watched);
       setSyncMessage(
         `Sync complete: ${result.imported} imported, ${result.addedToSimkl} added to Simkl, `
-        + `${result.removedLocally} removed here, ${result.removedFromSimkl} removed from Simkl.`
+        + `${result.removedLocally} removed here, ${result.removedFromSimkl} removed from Simkl. `
+        + `Simkl returned ${result.remoteWatchlist} watchlist item(s) and ${result.remoteWatched} watched movie/episode item(s).`
         + (result.skipped ? ` ${result.skipped} movie/TV item(s) could not be matched to TMDB.` : '')
       );
     } catch (syncError) {
@@ -105,9 +106,6 @@ export function WatchlistPage() {
         </p>
         <p className="mt-2 text-xs text-dark-500">
           Removing a whole title also removes its Simkl history and rating; removing one watched episode only clears that episode.
-        </p>
-        <p className="mt-2 text-xs text-dark-500">
-          Anime uses MyAnimeList IDs when syncing its watchlist and watched history with Simkl.
         </p>
         {error && <p className="mt-4 text-sm text-red-400" role="alert">{error}</p>}
         {syncMessage && <p className="mt-4 text-sm text-emerald-400" role="status">{syncMessage}</p>}
