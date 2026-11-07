@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
 import { MediaCard } from '../components/features/MediaCard';
 import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import { HorizontalCarousel } from '../components/features/HorizontalCarousel';
 
 export function WatchedPage() {
-  const { watched, removeFromWatched, markSeasonWatched, storageError } = useMediaLibrary();
+  const { watched, removeFromWatched, storageError } = useMediaLibrary();
 
   const moviesWatched = watched.filter((entry) => entry.type === 'movie');
   const tvShowsWatched = watched.filter((entry) => entry.type === 'tv');
@@ -58,21 +57,14 @@ export function WatchedPage() {
                     item={entry.item}
                     type="tv"
                     subtitle={subtitle}
+                    posterOnly
                     onRemove={() => removeFromWatched('tv', entry.item.id, entry.episode)}
                     removeLabel="Remove from watched history"
+                    removeIconOnly
                   />
                 </div>
               );
             })}
-            <div className="mb-4">{tvShowsWatched.map((entry) => (
-              <Button
-                key={entry.item.id}
-                variant="outline"
-                onClick={() => markSeasonWatched('tv', entry.item.id, 1)}
-              >
-                Mark Season 1 as Watched
-              </Button>
-            ))}</div>
           </HorizontalCarousel>
         </section>
       )}
