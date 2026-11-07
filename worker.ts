@@ -273,28 +273,48 @@ async function resolveSoloLatino(
 }
 
 async function resolvePelisMaster(title: string, year?: number, season?: number, episode?: number) {
-  const suggestUrl = `${PELISMASTER_ORIGIN}/api/suggest?q=${encodeURIComponent(title)}`;
-  const suggestResponse = await fetch(suggestUrl, {
-    headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0' },
-    signal: AbortSignal.timeout(25000),
-  });
-  if (!suggestResponse.ok) throw new Error('PelisMaster search could not be reached.');
-
-  const suggest = await suggestResponse.json() as {
-    titles?: { title?: string; url?: string; year?: number; type?: string }[];
-  };
   const wanted = normalizeTitle(title);
   const wantedType = season && episode ? 'series' : 'movie';
-  const matches = (suggest.titles ?? []).filter((item) => {
-    if (item.type !== wantedType || !item.url?.startsWith(`/${wantedType === 'movie' ? 'movie' : 'series'}/`)) return false;
-    const titleMatches = normalizeTitle(item.title ?? '') === wanted
-      || normalizeTitle(item.title ?? '').includes(wanted);
-    const yearMatches = wantedType !== 'movie' || !year || item.year === year;
-    return titleMatches && yearMatches;
-  });
-  const match = matches[0] ?? (suggest.titles ?? []).find((item) =>
-    item.type === wantedType && item.url && normalizeTitle(item.title ?? '').includes(wanted)
-  );
+  const words = wanted.split(' ').filter((word) => word.length >= 2);
+  const searchTerms = [
+    title,
+    words.length > 1 ? words.slice(0, 4).join(' ') : title,
+    words.slice(0, 2).join(' '),
+  ].filter((value, index, values) => value && values.indexOf(value) === index);
+
+  const candidates: { title?: string; url?: string; year?: number; type?: string }[] = [];
+  for (const searchTerm of searchTerms) {
+    const suggestUrl = `${PELISMASTER_ORIGIN}/api/suggest?q=${encodeURIComponent(searchTerm)}`;
+    const suggestResponse = await fetch(suggestUrl, {
+      headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!suggestResponse.ok) continue;
+    const suggest = await suggestResponse.json() as {
+      titles?: { title?: string; url?: string; year?: number; type?: string }[];
+    };
+    for (const item of suggest.titles ?? []) {
+      if (!candidates.some((candidate) => candidate.url === item.url)) candidates.push(item);
+    }
+  }
+  if (!candidates.length) throw new Error('PelisMaster search could not be reached.');
+
+  const wantedTokens = new Set(wanted.split(' ').filter(Boolean));
+  const rank = (item: { title?: string; url?: string; year?: number; type?: string }) => {
+    if (item.type !== wantedType || !item.url?.startsWith(`/${wantedType === 'movie' ? 'movie' : 'series'}/`)) return -100;
+    const candidate = normalizeTitle(item.title ?? '');
+    const candidateTokens = new Set(candidate.split(' ').filter(Boolean));
+    let overlap = 0;
+    for (const token of wantedTokens) if (candidateTokens.has(token)) overlap += 1;
+    let score = overlap * 10;
+    if (candidate === wanted) score += 100;
+    else if (candidate.includes(wanted) || wanted.includes(candidate)) score += 40;
+    if (year && item.year === year) score += 25;
+    return score;
+  };
+  const match = candidates
+    .filter((item) => rank(item) >= 10)
+    .sort((a, b) => rank(b) - rank(a))[0];
   if (!match?.url) throw new Error('This title could not be found on PelisMaster.');
 
   let pageUrl = `${PELISMASTER_ORIGIN}${match.url}`;
