@@ -108,6 +108,22 @@ async function resolveSoloLatino(title: string, season?: number, episode?: numbe
   return data.embedUrl as string;
 }
 
+async function resolvePelisMaster(title: string, year?: number, season?: number, episode?: number) {
+  if (!title.trim()) throw new Error('A title is required to search PelisMaster.');
+  const url = new URL('/api/pelismaster/resolve', window.location.origin);
+  url.searchParams.set('title', title.trim());
+  if (year && Number.isSafeInteger(year)) url.searchParams.set('year', String(year));
+  if (season) url.searchParams.set('season', String(season));
+  if (episode) url.searchParams.set('episode', String(episode));
+
+  const response = await fetch(url);
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.embedUrl) {
+    throw new Error(data?.error || 'This title could not be resolved from PelisMaster Latino.');
+  }
+  return data.embedUrl as string;
+}
+
 export function getKissAsianMoviePlayerUrl(title: string, year?: number) {
   return resolveKissAsian(title, undefined, year);
 }
@@ -128,4 +144,15 @@ export function getSoloLatinoEpisodePlayerUrl(title: string, season: number, epi
     throw new Error('Valid season and episode numbers are required.');
   }
   return resolveSoloLatino(title, season, episode);
+}
+
+export function getPelisMasterMoviePlayerUrl(title: string, year?: number) {
+  return resolvePelisMaster(title, year);
+}
+
+export function getPelisMasterEpisodePlayerUrl(title: string, season: number, episode: number) {
+  if (!Number.isSafeInteger(season) || season < 1 || !Number.isSafeInteger(episode) || episode < 1) {
+    throw new Error('Valid season and episode numbers are required.');
+  }
+  return resolvePelisMaster(title, undefined, season, episode);
 }

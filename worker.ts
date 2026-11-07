@@ -8,6 +8,7 @@ interface WorkerEnv {
 const KISSASIAN_ORIGIN = 'https://kissasian.com.gr';
 const DRAMAVIBE_ORIGIN = 'https://catalog.dramavibe.cfd';
 const SOLOLATINO_ORIGIN = 'https://sololatino.net';
+const PELISMASTER_ORIGIN = 'https://pelismaster.com';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -271,9 +272,72 @@ async function resolveSoloLatino(
   return { embedUrl: absUrl(resolved.url), pageUrl };
 }
 
+async function resolvePelisMaster(title: string, year?: number, season?: number, episode?: number) {
+  const suggestUrl = `${PELISMASTER_ORIGIN}/api/suggest?q=${encodeURIComponent(title)}`;
+  const suggestResponse = await fetch(suggestUrl, {
+    headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0' },
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!suggestResponse.ok) throw new Error('PelisMaster search could not be reached.');
+
+  const suggest = await suggestResponse.json() as {
+    titles?: { title?: string; url?: string; year?: number; type?: string }[];
+  };
+  const wanted = normalizeTitle(title);
+  const wantedType = season && episode ? 'series' : 'movie';
+  const matches = (suggest.titles ?? []).filter((item) => {
+    if (item.type !== wantedType || !item.url?.startsWith(`/${wantedType === 'movie' ? 'movie' : 'series'}/`)) return false;
+    const titleMatches = normalizeTitle(item.title ?? '') === wanted
+      || normalizeTitle(item.title ?? '').includes(wanted);
+    const yearMatches = wantedType !== 'movie' || !year || item.year === year;
+    return titleMatches && yearMatches;
+  });
+  const match = matches[0] ?? (suggest.titles ?? []).find((item) =>
+    item.type === wantedType && item.url && normalizeTitle(item.title ?? '').includes(wanted)
+  );
+  if (!match?.url) throw new Error('This title could not be found on PelisMaster.');
+
+  let pageUrl = `${PELISMASTER_ORIGIN}${match.url}`;
+  if (season && episode) {
+    const seriesHtml = await fetchText(pageUrl);
+    if (!seriesHtml) throw new Error('The PelisMaster series page could not be loaded.');
+    const slugMatch = seriesHtml.match(/href="\/series\/([^/"?#]+)\/season\/\d+(?:\/episode\/\d+)?"/i);
+    if (!slugMatch) throw new Error('PelisMaster episode routes could not be found.');
+    pageUrl = `${PELISMASTER_ORIGIN}/series/${slugMatch[1]}/season/${season}/episode/${episode}`;
+  }
+
+  const pageHtml = await fetchText(pageUrl);
+  if (!pageHtml) throw new Error('The PelisMaster title page could not be loaded.');
+  const playerMatch = pageHtml.match(/<div class="player"[\s\S]*?data-embed="([^"]+)"/i);
+  if (!playerMatch) throw new Error('A PelisMaster player was not found for this title.');
+
+  const embedHtml = decodeXml(playerMatch[1]);
+  const latinMatch = embedHtml.match(/src=["']([^"']*\?lang=LAT(?:&[^"']*)?)["']/i);
+  if (!latinMatch) throw new Error('No PelisMaster Latino player was found.');
+  const embedUrl = decodeXml(latinMatch[1]);
+  return { embedUrl: absUrl(embedUrl), pageUrl };
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/pelismaster/resolve') {
+      const title = (url.searchParams.get('title') ?? '').trim();
+      const yearValue = Number(url.searchParams.get('year') ?? 0);
+      const seasonValue = Number(url.searchParams.get('season') ?? 0);
+      const episodeValue = Number(url.searchParams.get('episode') ?? 0);
+      const year = Number.isSafeInteger(yearValue) && yearValue > 0 ? yearValue : undefined;
+      const season = Number.isSafeInteger(seasonValue) && seasonValue > 0 ? seasonValue : undefined;
+      const episode = Number.isSafeInteger(episodeValue) && episodeValue > 0 ? episodeValue : undefined;
+      if (!title) return json({ error: 'Title is required.' }, 400);
+      try {
+        return json(await resolvePelisMaster(title, year, season, episode));
+      } catch (error) {
+        return json({
+          error: error instanceof Error ? error.message : 'PelisMaster could not be resolved.',
+        }, 502);
+      }
+    }
     if (url.pathname === '/api/sololatino/resolve') {
       const title = (url.searchParams.get('title') ?? '').trim();
       const seasonValue = Number(url.searchParams.get('season') ?? 0);
