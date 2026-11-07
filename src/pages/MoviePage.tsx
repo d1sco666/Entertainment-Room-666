@@ -13,8 +13,6 @@ import { getVimeusMovieEmbedUrl } from '../utils/vimeus';
 import {
   getAnyEmbedMoviePlayerUrl,
   getKissAsianMoviePlayerUrl,
-  getPelisMasterMoviePlayerUrl,
-  getSoloLatinoMoviePlayerUrl,
   getSuperEmbedMoviePlayerUrl,
   getVidstuckMovieEmbedUrl,
   getZxcstreamMoviePlayerUrl,
@@ -112,19 +110,6 @@ export function MoviePage() {
             id: 'kissasian',
             name: 'KissAsian',
             getSrc: () => getKissAsianMoviePlayerUrl(
-              movie.title,
-              movie.releaseDate ? Number(movie.releaseDate.slice(0, 4)) : undefined
-            ),
-          },
-          {
-            id: 'sololatino',
-            name: 'SoloLatino (Latino)',
-            getSrc: () => getSoloLatinoMoviePlayerUrl(movie.title),
-          },
-          {
-            id: 'pelmaster',
-            name: 'PelisMaster (Latino)',
-            getSrc: () => getPelisMasterMoviePlayerUrl(
               movie.title,
               movie.releaseDate ? Number(movie.releaseDate.slice(0, 4)) : undefined
             ),
