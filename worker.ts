@@ -172,26 +172,40 @@ async function flareSolverRequest(
   solverUrl: string,
   command: 'request.get' | 'request.post',
   url: string,
-  postData?: string
+  postData?: string,
+  session?: string
 ) {
-  const response = await fetch(solverUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      cmd: command,
-      url,
-      ...(postData ? { postData } : {}),
-      maxTimeout: 60000,
-    }),
-    signal: AbortSignal.timeout(70000),
-  });
-  if (!response.ok) return null;
-  const result = await response.json() as {
-    status?: string;
-    solution?: { status?: number; response?: string };
-  };
-  if (result.status !== 'ok') return null;
-  return result.solution?.response ?? null;
+  let lastResult = '';
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const response = await fetch(solverUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cmd: command,
+          url,
+          ...(postData ? { postData } : {}),
+          ...(session ? { session } : {}),
+          maxTimeout: 90000,
+        }),
+        signal: AbortSignal.timeout(100000),
+      });
+      const result = await response.json().catch(() => null) as {
+        status?: string;
+        message?: string;
+        solution?: { status?: number; response?: string };
+      } | null;
+      if (!response.ok) {
+        lastResult = result?.message || `FlareSolverr returned HTTP ${response.status}.`;
+        continue;
+      }
+      if (result?.status === 'ok') return result.solution?.response ?? null;
+      lastResult = result?.message || 'FlareSolverr did not return a successful solution.';
+    } catch (error) {
+      lastResult = error instanceof Error ? error.message : 'FlareSolverr could not be reached.';
+    }
+  }
+  throw new Error(lastResult || 'SoloLatino could not be reached through FlareSolverr.');
 }
 
 function absUrl(value: string, base = SOLOLATINO_ORIGIN) {
@@ -211,9 +225,10 @@ async function resolveSoloLatino(
   season?: number,
   episode?: number
 ) {
+  const session = `sololatino-${crypto.randomUUID()}`;
   const searchUrl = `${SOLOLATINO_ORIGIN}/api/search/suggest?q=${encodeURIComponent(title)}`;
-  const searchJson = await flareSolverRequest(solverUrl, 'request.get', searchUrl);
-  if (!searchJson) throw new Error('SoloLatino could not be reached through FlareSolverr.');
+  const searchJson = await flareSolverRequest(solverUrl, 'request.get', searchUrl, undefined, session);
+  if (!searchJson) throw new Error('SoloLatino search returned no data.');
 
   let search: { title?: string; url?: string }[];
   try {
@@ -233,7 +248,7 @@ async function resolveSoloLatino(
     pageUrl = `${pageUrl}/temporada-${season}/episodio-${episode}`;
   }
 
-  const pageHtml = await flareSolverRequest(solverUrl, 'request.get', pageUrl);
+  const pageHtml = await flareSolverRequest(solverUrl, 'request.get', pageUrl, undefined, session);
   if (!pageHtml) throw new Error('The SoloLatino title page could not be loaded.');
 
   const mxStart = pageHtml.search(/<div[^>]+data-lang-group=["']mx["'][^>]*>/i);
@@ -259,7 +274,8 @@ async function resolveSoloLatino(
     solverUrl,
     'request.post',
     `${SOLOLATINO_ORIGIN}/api/player-url`,
-    JSON.stringify({ t: decodeHtml(token) })
+    JSON.stringify({ t: decodeHtml(token) }),
+    session
   );
   if (!resolvedJson) throw new Error('SoloLatino player resolution failed.');
   let resolved: { url?: string };
