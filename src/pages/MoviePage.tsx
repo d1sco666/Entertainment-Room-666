@@ -13,6 +13,7 @@ import { getVimeusMovieEmbedUrl } from '../utils/vimeus';
 import {
   getAnyEmbedMoviePlayerUrl,
   getKissAsianMoviePlayerUrl,
+  getSoloLatinoMoviePlayerUrl,
   getSuperEmbedMoviePlayerUrl,
   getVidstuckMovieEmbedUrl,
   getZxcstreamMoviePlayerUrl,
@@ -113,6 +114,11 @@ export function MoviePage() {
               movie.title,
               movie.releaseDate ? Number(movie.releaseDate.slice(0, 4)) : undefined
             ),
+          },
+          {
+            id: 'sololatino',
+            name: 'SoloLatino (Latino)',
+            getSrc: () => getSoloLatinoMoviePlayerUrl(movie.title),
           },
         ]}
         onClose={() => setShowPlayer(false)}

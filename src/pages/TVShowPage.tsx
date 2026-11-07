@@ -12,6 +12,7 @@ import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
 import {
   getAnyEmbedEpisodePlayerUrl,
   getKissAsianEpisodePlayerUrl,
+  getSoloLatinoEpisodePlayerUrl,
   getSuperEmbedEpisodePlayerUrl,
   getVidstuckEpisodeEmbedUrl,
   getZxcstreamEpisodePlayerUrl,
@@ -156,6 +157,15 @@ export function TVShowPage() {
               name: 'KissAsian',
               getSrc: () => getKissAsianEpisodePlayerUrl(
                 show.name,
+                selectedEpisode.episodeNumber
+              ),
+            },
+            {
+              id: 'sololatino',
+              name: 'SoloLatino (Latino)',
+              getSrc: () => getSoloLatinoEpisodePlayerUrl(
+                show.name,
+                selectedSeason,
                 selectedEpisode.episodeNumber
               ),
             },

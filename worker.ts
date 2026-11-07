@@ -2,10 +2,12 @@ interface WorkerEnv {
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
+  FLARESOLVERR_URL?: string;
 }
 
 const KISSASIAN_ORIGIN = 'https://kissasian.com.gr';
 const DRAMAVIBE_ORIGIN = 'https://catalog.dramavibe.cfd';
+const SOLOLATINO_ORIGIN = 'https://sololatino.net';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -165,9 +167,132 @@ async function resolveKissAsianPlayer(pageUrl: string) {
   return { embedUrl, src: source.src, list: source.list };
 }
 
+async function flareSolverRequest(
+  solverUrl: string,
+  command: 'request.get' | 'request.post',
+  url: string,
+  postData?: string
+) {
+  const response = await fetch(solverUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cmd: command,
+      url,
+      ...(postData ? { postData } : {}),
+      maxTimeout: 60000,
+    }),
+    signal: AbortSignal.timeout(70000),
+  });
+  if (!response.ok) return null;
+  const result = await response.json() as {
+    status?: string;
+    solution?: { status?: number; response?: string };
+  };
+  if (result.status !== 'ok') return null;
+  return result.solution?.response ?? null;
+}
+
+function absUrl(value: string, base = SOLOLATINO_ORIGIN) {
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith('//')) return `https:${value}`;
+  if (value.startsWith('/')) return `${SOLOLATINO_ORIGIN}${value}`;
+  return new URL(value, base).toString();
+}
+
+function decodeHtml(value: string) {
+  return decodeXml(value).replace(/&nbsp;/gi, ' ').trim();
+}
+
+async function resolveSoloLatino(
+  solverUrl: string,
+  title: string,
+  season?: number,
+  episode?: number
+) {
+  const searchUrl = `${SOLOLATINO_ORIGIN}/api/search/suggest?q=${encodeURIComponent(title)}`;
+  const searchJson = await flareSolverRequest(solverUrl, 'request.get', searchUrl);
+  if (!searchJson) throw new Error('SoloLatino could not be reached through FlareSolverr.');
+
+  let search: { title?: string; url?: string }[];
+  try {
+    search = JSON.parse(searchJson) as { title?: string; url?: string }[];
+  } catch {
+    throw new Error('SoloLatino search returned an unexpected response.');
+  }
+
+  const wanted = normalizeTitle(title);
+  const match = search.find((item) => item.url && normalizeTitle(item.title ?? '') === wanted)
+    ?? search.find((item) => item.url && normalizeTitle(item.title ?? '').includes(wanted));
+  if (!match?.url) throw new Error('This title could not be found on SoloLatino.');
+
+  let pageUrl = absUrl(match.url);
+  if (season && episode) {
+    pageUrl = pageUrl.replace(/\/+$/, '').replace(/\/temporada-\d+\/episodio-\d+\/?$/, '');
+    pageUrl = `${pageUrl}/temporada-${season}/episodio-${episode}`;
+  }
+
+  const pageHtml = await flareSolverRequest(solverUrl, 'request.get', pageUrl);
+  if (!pageHtml) throw new Error('The SoloLatino title page could not be loaded.');
+
+  const mxStart = pageHtml.search(/<div[^>]+data-lang-group=["']mx["'][^>]*>/i);
+  if (mxStart < 0) throw new Error('SoloLatino Latino players were not found for this title.');
+
+  const opening = pageHtml.slice(mxStart).match(/<div\b[^>]*>/i);
+  if (!opening) throw new Error('The SoloLatino Latino player group could not be parsed.');
+  let depth = 0;
+  let groupEnd = mxStart;
+  const tags = /<(\/?)div\b[^>]*>/gi;
+  tags.lastIndex = mxStart;
+  let tag: RegExpExecArray | null;
+  while ((tag = tags.exec(pageHtml)) && tag.index >= mxStart) {
+    depth += tag[1] ? -1 : 1;
+    groupEnd = tag.index + tag[0].length;
+    if (depth === 0) break;
+  }
+  const groupHtml = pageHtml.slice(mxStart, groupEnd);
+  const token = Array.from(groupHtml.matchAll(/data-player-token=["']([^"']+)["']/gi))[0]?.[1];
+  if (!token) throw new Error('No SoloLatino Latino player token was found.');
+
+  const resolvedJson = await flareSolverRequest(
+    solverUrl,
+    'request.post',
+    `${SOLOLATINO_ORIGIN}/api/player-url`,
+    JSON.stringify({ t: decodeHtml(token) })
+  );
+  if (!resolvedJson) throw new Error('SoloLatino player resolution failed.');
+  let resolved: { url?: string };
+  try {
+    resolved = JSON.parse(resolvedJson) as { url?: string };
+  } catch {
+    throw new Error('SoloLatino returned an invalid player response.');
+  }
+  if (!resolved.url) throw new Error('No SoloLatino Latino embed URL was returned.');
+  return { embedUrl: absUrl(resolved.url), pageUrl };
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/sololatino/resolve') {
+      const title = (url.searchParams.get('title') ?? '').trim();
+      const seasonValue = Number(url.searchParams.get('season') ?? 0);
+      const episodeValue = Number(url.searchParams.get('episode') ?? 0);
+      const season = Number.isSafeInteger(seasonValue) && seasonValue > 0 ? seasonValue : undefined;
+      const episode = Number.isSafeInteger(episodeValue) && episodeValue > 0 ? episodeValue : undefined;
+      if (!title) return json({ error: 'Title is required.' }, 400);
+
+      const solverUrl = env.FLARESOLVERR_URL?.trim()
+        ?? 'http://127.0.0.1:8191/v1';
+      try {
+        const player = await resolveSoloLatino(solverUrl, title, season, episode);
+        return json(player);
+      } catch (error) {
+        return json({
+          error: error instanceof Error ? error.message : 'SoloLatino could not be resolved.',
+        }, 502);
+      }
+    }
     if (url.pathname === '/api/kissasian/resolve') {
       const title = (url.searchParams.get('title') ?? '').trim();
       const episodeValue = Number(url.searchParams.get('episode') ?? 0);
