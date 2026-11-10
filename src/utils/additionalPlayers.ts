@@ -42,6 +42,13 @@ export function getZxcstreamEpisodePlayerUrl(
   return url.toString();
 }
 
+export function getKisskhEpisodePlayerUrl(episodeId: number) {
+  if (!Number.isSafeInteger(episodeId) || episodeId < 1) {
+    throw new Error('A valid KissKH episode ID is required.');
+  }
+  return `https://2ivdeo.buzz/kisskh/${episodeId}`;
+}
+
 export function getSuperEmbedMoviePlayerUrl(tmdbId: number | undefined) {
   validateMediaIds(tmdbId);
   const url = new URL('https://multiembed.mov/');

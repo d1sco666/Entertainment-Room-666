@@ -12,6 +12,7 @@ import { getVimeusEpisodeEmbedUrl } from '../utils/vimeus';
 import {
   getAnyEmbedEpisodePlayerUrl,
   getKissAsianEpisodePlayerUrl,
+  getKisskhEpisodePlayerUrl,
   getSuperEmbedEpisodePlayerUrl,
   getVidstuckEpisodeEmbedUrl,
   getZxcstreamEpisodePlayerUrl,
@@ -164,6 +165,20 @@ export function TVShowPage() {
                 ).slice(0, 4)
               ),
             },
+{
+            id: 'kisskh',
+            name: 'KissKH',
+            getSrc: () => {
+              if (!show.tmdbId) {
+                throw new Error('A TMDB ID is required for KissKH episode lookup. Obtain a KissKH episode ID from kisskh.id');
+              }
+              // Note: KissKH uses its own episode IDs, not derivable from TMDB.
+              // This placeholder uses TMDB ID as a fallback, but actual playback
+              // requires a KissKH episode ID obtained from the KissKH website.
+              return getKisskhEpisodePlayerUrl(show.tmdbId);
+            },
+            unavailableReason: !show.tmdbId ? 'A TMDB ID is required for KissKH episode lookup' : undefined,
+          },
           ]}
           onClose={() => setShowPlayer(false)}
         />
