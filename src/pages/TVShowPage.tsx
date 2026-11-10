@@ -156,7 +156,12 @@ export function TVShowPage() {
               name: 'KissAsian',
               getSrc: () => getKissAsianEpisodePlayerUrl(
                 show.name,
-                selectedEpisode.episodeNumber
+                selectedSeason,
+                selectedEpisode.episodeNumber,
+                show.firstAirDate ? Number(show.firstAirDate.slice(0, 4)) : undefined,
+                [show.originalName, ...(show.alternativeNames ?? [])].filter(
+                  (title): title is string => Boolean(title)
+                ).slice(0, 4)
               ),
             },
           ]}

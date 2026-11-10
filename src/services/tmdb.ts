@@ -43,6 +43,10 @@ interface TMDBMovie extends TMDBTitle {
 
 interface TMDBTVShow extends TMDBTitle {
   name: string;
+  original_name?: string;
+  alternative_titles?: {
+    results?: { title: string; iso_3166_1?: string }[];
+  };
   first_air_date?: string;
   last_air_date?: string;
   number_of_seasons?: number;
@@ -263,6 +267,12 @@ function mapTVShow(show: TMDBTVShow): CineSrcTVShow {
     tmdbId: show.id,
     imdbId: show.external_ids?.imdb_id ?? undefined,
     name: show.name,
+    originalName: show.original_name ?? undefined,
+    alternativeNames: [...new Set(
+      (show.alternative_titles?.results ?? [])
+        .map((entry) => entry.title.trim())
+        .filter((title) => title && title !== show.name && title !== show.original_name)
+    )],
     overview: show.overview ?? '',
     poster: image(show.poster_path),
     backdrop: image(show.backdrop_path, 'w780'),
@@ -543,7 +553,7 @@ class TMDBAPI {
     if (cached) return cached;
 
     const request = this.request<TMDBTVShow>(`/tv/${encodeURIComponent(id)}`, {
-      append_to_response: 'content_ratings,external_ids',
+      append_to_response: 'content_ratings,external_ids,alternative_titles',
     }).then(mapTVShow).catch((error: unknown) => {
       this.tvDetailRequests.delete(id);
       throw error;

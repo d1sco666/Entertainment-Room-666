@@ -23,6 +23,8 @@ export interface CineSrcTVShow {
   id: string;
   simklHref?: string;
   name: string;
+  originalName?: string;
+  alternativeNames?: string[];
   overview: string;
   poster: string;
   backdrop: string;
@@ -92,5 +94,3 @@ export type WatchedItem = SavedMedia & {
     name: string;
   };
 };
-
-

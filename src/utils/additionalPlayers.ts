@@ -78,12 +78,22 @@ export function getAnyEmbedEpisodePlayerUrl(
   return `https://anyembed.xyz/embed/tv/${encodeURIComponent(String(tmdbId))}/${season}/${episode}`;
 }
 
-async function resolveKissAsian(title: string, episode?: number, year?: number) {
+async function resolveKissAsian(
+  title: string,
+  episode?: number,
+  year?: number,
+  season?: number,
+  alternateTitles?: string[]
+) {
   if (!title.trim()) throw new Error('A title is required to search KissAsian.');
   const url = new URL('/api/kissasian/resolve', window.location.origin);
   url.searchParams.set('title', title.trim());
   if (episode) url.searchParams.set('episode', String(episode));
+  if (season) url.searchParams.set('season', String(season));
   if (year && Number.isSafeInteger(year)) url.searchParams.set('year', String(year));
+  for (const alternateTitle of alternateTitles ?? []) {
+    if (alternateTitle.trim()) url.searchParams.append('alternateTitle', alternateTitle.trim());
+  }
 
   const response = await fetch(url);
   const data = await response.json().catch(() => null);
@@ -97,9 +107,15 @@ export function getKissAsianMoviePlayerUrl(title: string, year?: number) {
   return resolveKissAsian(title, undefined, year);
 }
 
-export function getKissAsianEpisodePlayerUrl(title: string, episode: number) {
-  if (!Number.isSafeInteger(episode) || episode < 1) {
-    throw new Error('A valid episode number is required.');
+export function getKissAsianEpisodePlayerUrl(
+  title: string,
+  season: number,
+  episode: number,
+  year?: number,
+  alternateTitles?: string[]
+) {
+  if (!Number.isSafeInteger(season) || season < 1 || !Number.isSafeInteger(episode) || episode < 1) {
+    throw new Error('Valid season and episode numbers are required.');
   }
-  return resolveKissAsian(title, episode);
+  return resolveKissAsian(title, episode, year, season, alternateTitles);
 }
